@@ -74,7 +74,8 @@ function injectAnimationStyles() {
 
     .x-skeleton-card {
         width: 100%;
-        /* Height is set dynamically via JS for randomness */
+        /* Height is set dynamically via JS */
+        flex: 0 0 auto; /* Prevent shrinking in flex container */
         background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.05) 100%);
         border-bottom: 1px solid rgba(255,255,255,0.1);
         position: relative;
@@ -186,36 +187,76 @@ function triggerBackNav() {
 
 // Custom Lightbox Logic
 let activeLightbox = null;
-let lightboxStartY = 0;
-let lightboxCurrentY = 0;
 let lightboxImg = null;
-let originalRect = null;
+let imageList = [];
+let currentImageIndex = 0;
+
+// Gesture state
+let gestureStartX = 0;
+let gestureStartY = 0;
+let gestureCurrentX = 0;
+let gestureCurrentY = 0;
+let isDraggingX = false;
+let isDraggingY = false;
+
+function collectImages(startImg) {
+    // Collect all media images currently valid in the DOM
+    // Filter out small avatars or icons if possible, though 'pbs.twimg.com/media' usually targets content
+    const allImages = Array.from(document.querySelectorAll('img[src*="pbs.twimg.com/media"]'));
+
+    // Filter to ensure we only get actual content images (avoiding weird duplicates if any)
+    // We can filter by verifying they are likely inside a tweet or media container
+    // For now, simple selection is robust enough for the user's "timeline flow" request
+
+    imageList = allImages.map(img => ({
+        src: img.src,
+        highRes: img.src.replace(/name=\w+/, 'name=large'),
+        element: img
+    }));
+
+    // Find index of the clicked image
+    currentImageIndex = imageList.findIndex(item => item.src === startImg.src);
+    if (currentImageIndex === -1) {
+        // Fallback if src changed or not found
+        imageList = [{ src: startImg.src, highRes: startImg.src.replace(/name=\w+/, 'name=large') }];
+        currentImageIndex = 0;
+    }
+}
+
+function updateLightboxImage(index, direction = 0) {
+    if (!lightboxImg || !imageList[index]) return;
+
+    const targetSrc = imageList[index].highRes;
+
+    // Reset transform/transitions
+    lightboxImg.style.transition = 'none';
+    lightboxImg.style.transform = 'translate(0, 0) scale(1)';
+    lightboxImg.style.opacity = '1';
+
+    // If direction provided, we can animate exit/enter? 
+    // For simplicity/responsiveness, just swap src and reset position.
+    // User requested swipe, so manual drag handles the animation mostly.
+
+    lightboxImg.src = targetSrc;
+    currentImageIndex = index;
+}
 
 function openLightbox(sourceImg) {
     if (activeLightbox) return;
 
-    // 1. Prepare info
-    originalRect = sourceImg.getBoundingClientRect();
-    const highResUrl = sourceImg.src.replace(/name=\w+/, 'name=large'); // Try to get large
+    collectImages(sourceImg);
+
+    // 0. Push history
+    history.pushState({ x_lightbox: true }, '', '');
 
     // 2. Create Elements
     const lightbox = document.createElement('div');
     lightbox.className = 'x-lightbox';
 
     const img = document.createElement('img');
-    img.src = sourceImg.src; // start with current src
+    img.src = imageList[currentImageIndex].src;
     img.className = 'x-lightbox-img';
 
-    // 3. Initial Position (matching original image)
-    // We use transform to animate from original rect to center
-    // However, fitting object-fit:contain is tricky to animate perfectly from object-fit:cover
-    // Simple approach: Fade in background, Zoom in image from center or simple scaling
-
-    // Better native feel: Calculate scale/translate
-    // But for simplicity and robustness against layout shifts:
-    // Start scale 0.5 -> 1 with opacity is easiest, but user wants "expand from image"
-
-    // Let's try formatting it
     lightbox.appendChild(img);
     document.body.appendChild(lightbox);
 
@@ -226,69 +267,157 @@ function openLightbox(sourceImg) {
     lightbox.getBoundingClientRect();
     lightbox.classList.add('active');
 
-    // Switch to high res after animation starts
-    setTimeout(() => { img.src = highResUrl; }, 100);
-
-    // 4. Attach Close Listeners
-    lightbox.addEventListener('click', () => closeLightbox());
+    // Switch to high res immediately
+    setTimeout(() => { img.src = imageList[currentImageIndex].highRes; }, 50);
 
     // Gestures
-    lightbox.addEventListener('touchstart', (e) => {
-        lightboxStartY = e.touches[0].clientY;
-        lightboxCurrentY = lightboxStartY;
-        img.style.transition = 'none'; // disable transition for direct 1:1 movement
-    });
-
-    lightbox.addEventListener('touchmove', (e) => {
-        e.preventDefault(); // stop scrolling
-        lightboxCurrentY = e.touches[0].clientY;
-        const deltaY = lightboxCurrentY - lightboxStartY;
-
-        // Move image with finger
-        // Scale down slightly as you pull away
-        const scale = Math.max(0.6, 1 - Math.abs(deltaY) / 1000);
-        img.style.transform = `translateY(${deltaY}px) scale(${scale})`;
-
-        // Fade background
-        const opacity = Math.max(0, 1 - Math.abs(deltaY) / 500);
-        lightbox.style.backgroundColor = `rgba(0, 0, 0, ${opacity})`;
-    });
-
-    lightbox.addEventListener('touchend', (e) => {
-        const deltaY = lightboxCurrentY - lightboxStartY;
-        if (Math.abs(deltaY) > 100) {
-            closeLightbox();
-        } else {
-            // Revert
-            img.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
-            img.style.transform = '';
-            lightbox.style.backgroundColor = 'rgba(0, 0, 0, 1)';
-        }
-    });
+    activeLightbox.addEventListener('touchstart', onTouchStart, { passive: false });
+    activeLightbox.addEventListener('touchmove', onTouchMove, { passive: false });
+    activeLightbox.addEventListener('touchend', onTouchEnd, { passive: false });
 }
 
-function closeLightbox() {
+function onTouchStart(e) {
+    if (e.touches.length !== 1) return;
+    gestureStartX = e.touches[0].clientX;
+    gestureStartY = e.touches[0].clientY;
+    gestureCurrentX = gestureStartX;
+    gestureCurrentY = gestureStartY;
+    isDraggingX = false;
+    isDraggingY = false;
+
+    if (lightboxImg) {
+        lightboxImg.style.transition = 'none';
+    }
+}
+
+function onTouchMove(e) {
+    if (!activeLightbox || !lightboxImg) return;
+    e.preventDefault(); // Lock browser scroll
+
+    gestureCurrentX = e.touches[0].clientX;
+    gestureCurrentY = e.touches[0].clientY;
+
+    const deltaX = gestureCurrentX - gestureStartX;
+    const deltaY = gestureCurrentY - gestureStartY;
+
+    if (!isDraggingX && !isDraggingY) {
+        // Determine direction
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+            isDraggingX = true;
+        } else if (Math.abs(deltaY) > 10) {
+            isDraggingY = true;
+        }
+    }
+
+    if (isDraggingY) {
+        // Pull to close
+        const scale = Math.max(0.6, 1 - Math.abs(deltaY) / 1000);
+        lightboxImg.style.transform = `translateY(${deltaY}px) scale(${scale})`;
+        const opacity = Math.max(0, 1 - Math.abs(deltaY) / 500);
+        activeLightbox.style.backgroundColor = `rgba(0, 0, 0, ${opacity})`;
+    } else if (isDraggingX) {
+        // Swipe navigation
+        // Add resistance at edges
+        let translateX = deltaX;
+        if ((currentImageIndex === 0 && deltaX > 0) ||
+            (currentImageIndex === imageList.length - 1 && deltaX < 0)) {
+            translateX = deltaX * 0.3; // Resistance
+        }
+        lightboxImg.style.transform = `translateX(${translateX}px)`;
+    }
+}
+
+function onTouchEnd(e) {
+    if (!activeLightbox || !lightboxImg) return;
+
+    const deltaX = gestureCurrentX - gestureStartX;
+    const deltaY = gestureCurrentY - gestureStartY;
+
+    if (isDraggingY) {
+        // Check for close
+        if (Math.abs(deltaY) > 100) {
+            closeLightbox(false);
+        } else {
+            // Revert
+            resetImagePosition();
+        }
+    } else if (isDraggingX) {
+        // Check for navigation
+        const threshold = 80;
+        if (deltaX < -threshold && currentImageIndex < imageList.length - 1) {
+            // Next
+            transitionToImage(currentImageIndex + 1, -1);
+        } else if (deltaX > threshold && currentImageIndex > 0) {
+            // Prev
+            transitionToImage(currentImageIndex - 1, 1);
+        } else {
+            // Revert
+            resetImagePosition();
+        }
+    } else {
+        // Tap (neither X nor Y drag) -> Do nothing (tap to close removed)
+    }
+
+    isDraggingX = false;
+    isDraggingY = false;
+}
+
+function resetImagePosition() {
+    if (!lightboxImg || !activeLightbox) return;
+    lightboxImg.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
+    lightboxImg.style.transform = 'translate(0, 0) scale(1)';
+    activeLightbox.style.backgroundColor = 'rgba(0, 0, 0, 1)';
+}
+
+function transitionToImage(newIndex, direction) {
+    if (!lightboxImg) return;
+
+    // Simply snap for now, or slide out
+    // Since we are reusing the img element, a fade or simple snap is best to avoid complex double-buffering
+    // Let's do: Slide out fully -> Swap Src -> Reset Position (hidden) -> Slide in?
+    // Faster feeling: Just swap and reset.
+
+    updateLightboxImage(newIndex);
+}
+
+
+function closeLightbox(fromHistory = false) {
     if (!activeLightbox) return;
+
+    // If triggered by UI interaction, pop history (which will trigger popstate -> closeLightbox(true))
+    if (!fromHistory) {
+        history.back();
+        return;
+    }
 
     activeLightbox.classList.add('x-lightbox-closing');
 
-    // Animate image out (simple fade/scale out for now, exact reverse to rect is complex math)
     if (lightboxImg) {
         lightboxImg.style.transition = 'all 0.25s ease-out';
         lightboxImg.style.opacity = '0';
         lightboxImg.style.transform = 'scale(0.8)';
     }
 
+    // Capture reference to remove
+    const targetLightbox = activeLightbox;
+    activeLightbox = null;
+    lightboxImg = null;
+
     setTimeout(() => {
-        if (activeLightbox) activeLightbox.remove();
-        activeLightbox = null;
-        lightboxImg = null;
+        if (targetLightbox) targetLightbox.remove();
     }, 250);
 }
 
 function attachInteractionListeners() {
-    // 1. Navigation Detection
-    window.addEventListener('popstate', triggerBackNav);
+    // 1. Navigation Detection & Lightbox History Handling
+    window.addEventListener('popstate', (e) => {
+        if (activeLightbox) {
+            // Prevent other back handlers if possible, or just accept we are closing modal
+            closeLightbox(true);
+            return;
+        }
+        triggerBackNav();
+    });
 
     // Global click handler
     document.addEventListener('click', (e) => {
@@ -310,6 +439,8 @@ function attachInteractionListeners() {
 
         // B. Back Button
         if (target.closest('[data-testid="app-bar-back-button"]')) {
+            // If we are in lightbox (shouldn't happen as lightbox covers header), do nothing
+            // Regular back
             triggerBackNav();
         }
     }, true); // Capture phase to prevent X specific handlers
@@ -436,10 +567,16 @@ function enableSkeleton(cell) {
     skeletonWrapper.className = 'x-skeleton-wrapper';
     skeletonWrapper.style.width = '100%';
 
-    // User requested 100 cards
-    for (let i = 0; i < 100; i++) {
+    // User requested 40 cards with random heights
+    for (let i = 0; i < 40; i++) {
         const card = document.createElement('div');
         card.className = 'x-skeleton-card';
+
+        // Random height between 200 and 600
+        const randomHeight = Math.floor(Math.random() * (600 - 200 + 1)) + 200;
+        card.style.height = `${randomHeight}px`;
+        card.style.minHeight = `${randomHeight}px`; // Force height
+
         skeletonWrapper.appendChild(card);
     }
 
