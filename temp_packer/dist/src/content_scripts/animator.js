@@ -98,12 +98,54 @@ function injectAnimationStyles() {
         0% { transform: translateX(-100%); }
         100% { transform: translateX(100%); }
     }
+    
+    /* Navigation Animations */
+    .x-slide-in-right {
+        animation: x-slide-in-right-anim 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .x-slide-in-left {
+        animation: x-slide-in-left-anim 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    
+    @keyframes x-slide-in-right-anim {
+        from { transform: translateX(50px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    
+    @keyframes x-slide-in-left-anim {
+        from { transform: translateX(-50px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
   `;
     document.head.appendChild(style);
 }
 
+let isBackNavigation = false;
+let backNavTimeout;
+
+function triggerBackNav() {
+    isBackNavigation = true;
+    if (backNavTimeout) clearTimeout(backNavTimeout);
+    backNavTimeout = setTimeout(() => {
+        isBackNavigation = false;
+    }, 1000); // Reset after 1s
+}
+
 function attachInteractionListeners() {
-    // 1. Haptic Feedback & Press Animation
+    // 1. Navigation Detection
+    window.addEventListener('popstate', triggerBackNav);
+
+    document.addEventListener('click', (e) => {
+        const target = e.target;
+        // Back Button
+        if (target.closest('[data-testid="app-bar-back-button"]')) {
+            triggerBackNav();
+        }
+
+        // Haptics (Removed)
+    }, true);
+
+    // 2. Press Animation
     document.addEventListener('touchstart', (e) => {
         const target = e.target.closest('div[role="button"], a, button, [data-testid="tweet"], [data-testid="like"], [data-testid="retweet"], [data-testid="reply"]');
         if (target) {
@@ -158,8 +200,14 @@ const animObserver = new MutationObserver((mutations) => {
                         // Content cell
                         disableSkeleton(node);
                         const content = node.firstElementChild;
-                        // Apply fade-in only if it's main content
-                        if (content) content.classList.add('x-fade-in');
+                        // Apply animation based on navigation direction
+                        if (content) {
+                            if (isBackNavigation) {
+                                content.classList.add('x-slide-in-left');
+                            } else {
+                                content.classList.add('x-fade-in');
+                            }
+                        }
                     }
                 }
                 // Case B: Content injected into existing cell
@@ -173,7 +221,11 @@ const animObserver = new MutationObserver((mutations) => {
                     }
 
                     if (['tweet', 'notification', 'UserCell'].includes(testId)) {
-                        node.classList.add('x-fade-in');
+                        if (isBackNavigation) {
+                            node.classList.add('x-slide-in-left');
+                        } else {
+                            node.classList.add('x-fade-in');
+                        }
                     }
                 }
 
