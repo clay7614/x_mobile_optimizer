@@ -1,0 +1,7 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="100" fill="#000000"/>
+  <path d="M305.8 458.7L189.9 292.1L163.6 254.4L38.4 74.3H126.9L222.1 211.2L248.4 248.9L403.5 458.7H305.8ZM284.2 458.7H473.6L322.3 252.1L450.4 74.3H363.8L269.4 205.2L126.3 0H38.4L219.7 260.6L63.5 458.7H284.2ZM195.4 125.1H238.7L428.6 409.6H382.4L195.4 125.1Z" fill="#FFFFFF"/>
+  <path d="M256 0L350 200L256 512L162 200L256 0Z" fill="none" stroke="none"/> 
+  <!-- Adding a lightning bolt stylized element overlay -->
+  <path d="M280 200 L320 200 L240 340 L260 340 L200 440 L280 200" fill="#ffffff" stroke="#000000" stroke-width="10"/>
+</svg>

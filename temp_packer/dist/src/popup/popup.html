@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>X Optimizer Settings</title>
+  <link rel="stylesheet" href="popup.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>X Optimizer</h1>
+      <span class="badge">v1.0</span>
+    </header>
+
+    <main>
+      <div class="card">
+        <div class="card-header">
+          <h2>Speed Mode</h2>
+          <label class="switch">
+            <input type="checkbox" id="speedModeToggle">
+            <span class="slider round"></span>
+          </label>
+        </div>
+        <p class="description">広告除去と不要な要素の非表示で、タイムラインを高速化します。</p>
+        
+        <div class="sub-options" id="speedOptions">
+          <div class="option-item">
+            <label for="removeAds">広告（プロモーション）を隠す</label>
+            <input type="checkbox" id="removeAds">
+          </div>
+          <div class="option-item">
+            <label for="removeSidebar">トレンドサイドバーを隠す</label>
+            <input type="checkbox" id="removeSidebar">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>Motion Mode</h2>
+          <label class="switch">
+            <input type="checkbox" id="motionModeToggle">
+            <span class="slider round"></span>
+          </label>
+        </div>
+        <p class="description">マイクロインタラクションを追加し、操作感をリッチにします。</p>
+      </div>
+    </main>
+
+    <footer>
+      <p>Powered by X Optimizer Extension</p>
+    </footer>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

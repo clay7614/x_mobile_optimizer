@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "X Mobile Optimizer",
+  "version": "1.0.0",
+  "description": "Optimize X (Twitter) web performance and add animations for Android browsers.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "*://twitter.com/*",
+    "*://x.com/*",
+    "*://mobile.twitter.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://twitter.com/*",
+        "*://x.com/*",
+        "*://mobile.twitter.com/*"
+      ],
+      "js": [
+        "src/content_scripts/optimizer.js",
+        "src/content_scripts/animator.js"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_title": "X Mobile Optimizer Settings"
+  },
+  "icons": {
+    "16": "assets/icon_16.png",
+    "48": "assets/icon_48.png",
+    "128": "assets/icon_128.png"
+  }
+}
