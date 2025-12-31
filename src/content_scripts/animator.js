@@ -74,19 +74,29 @@ function attachEventListeners() {
 
 function createRipple(event) {
     // Target interactive elements
-    const target = event.target.closest('div[role="button"], a, button, [data-testid="app-bar-back-button"]');
+    const target = event.target.closest('div[role="button"], a, button, [data-testid="app-bar-back-button"], [data-testid="SideNav_AccountSwitcher_Button"]');
 
     if (target) {
+        // Prevent scrollbars by ensuring overflow is hidden on the target
+        const originalOverflow = target.style.overflow;
+        const originalPosition = target.style.position;
+
         const rect = target.getBoundingClientRect();
         const circle = document.createElement('span');
         const diameter = Math.max(rect.width, rect.height);
         const radius = diameter / 2;
 
-        // Simple overlay ripple at click position
         circle.style.width = circle.style.height = `${diameter}px`;
         circle.style.left = `${event.clientX - rect.left - radius}px`;
         circle.style.top = `${event.clientY - rect.top - radius}px`;
         circle.classList.add('x-touch-ripple');
+
+        // Ensure relative positioning and hidden overflow to contain the ripple
+        const style = window.getComputedStyle(target);
+        if (style.position === 'static') {
+            target.style.position = 'relative';
+        }
+        target.style.overflow = 'hidden';
 
         // Remove existing ripples
         const existing = target.getElementsByClassName('x-touch-ripple')[0];
@@ -94,19 +104,22 @@ function createRipple(event) {
             existing.remove();
         }
 
-        // Ensure relative positioning
-        const style = window.getComputedStyle(target);
-        if (style.position === 'static') {
-            target.style.position = 'relative';
-        }
-
         target.appendChild(circle);
 
+        // Cleanup after animation finishes
         setTimeout(() => {
             circle.remove();
+            // We don't necessarily want to revert overflow immediately if other ripples are active,
+            // but for a single ripple it's generally safe. 
+            // Better: only revert if no more ripples exist.
+            if (target.getElementsByClassName('x-touch-ripple').length === 0) {
+                target.style.overflow = originalOverflow;
+                // target.style.position = originalPosition; // Reverting position might be riskier for layout
+            }
         }, 600);
     }
 }
+
 
 // Observe for new tweets/elements to animate
 const animObserver = new MutationObserver((mutations) => {
