@@ -215,6 +215,7 @@ let currentImageIndex = 0;
 let gestureStartX = 0;
 let gestureStartY = 0;
 let trackStartX = 0;
+let gestureStartTime = 0;
 let isDraggingX = false;
 let isDraggingY = false;
 
@@ -330,6 +331,7 @@ function onTouchStart(e) {
     if (e.touches.length !== 1) return;
     gestureStartX = e.touches[0].clientX;
     gestureStartY = e.touches[0].clientY;
+    gestureStartTime = Date.now();
 
     // Get current transform value for track logic is tricky with vw.
     // Simpler: Track assumes current index base.
@@ -408,11 +410,16 @@ function onTouchEnd(e) {
     const deltaX = currentX - gestureStartX;
     const deltaY = currentY - gestureStartY;
 
+    const duration = Date.now() - gestureStartTime;
+    const velocityX = Math.abs(deltaX) / duration;
+    const velocityY = Math.abs(deltaY) / duration;
+
     // Restore transition
     lightboxTrack.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
 
     if (isDraggingY) {
-        if (Math.abs(deltaY) > 80) {
+        // Close if dragged far enough OR flicked fast enough
+        if (Math.abs(deltaY) > 80 || (velocityY > 0.5 && Math.abs(deltaY) > 40)) {
             closeLightbox(false);
         } else {
             // Revert properties
@@ -433,10 +440,14 @@ function onTouchEnd(e) {
         }
     }
     else if (isDraggingX) {
-        const threshold = 50; // Reduced from 20% width to 40px for lighter swipe
-        if (deltaX < -threshold && currentImageIndex < imageList.length - 1) {
+        const threshold = 50;
+        // Navigate if dragged past threshold OR flicked fast
+        const isNext = (deltaX < -threshold) || (velocityX > 0.5 && deltaX < -30);
+        const isPrev = (deltaX > threshold) || (velocityX > 0.5 && deltaX > 30);
+
+        if (isNext && currentImageIndex < imageList.length - 1) {
             currentImageIndex++;
-        } else if (deltaX > threshold && currentImageIndex > 0) {
+        } else if (isPrev && currentImageIndex > 0) {
             currentImageIndex--;
         }
         updateTrackPosition(); // Snap to new index
@@ -620,10 +631,11 @@ const animObserver = new MutationObserver((mutations) => {
 
                 // --- C. List Content Animations (Virtual Scroll) ---
                 else if (testId === 'cellInnerDiv') {
-                    // Force clean up if we are on status page and skeleton exists
+                    // Strict disable: Do absolutely nothing with skeletons on status page
                     if (window.location.pathname.includes('/status/')) {
-                        disableSkeleton(node);
-                        return;
+                        // Just in case one slipped in
+                        if (node.classList.contains('x-skeleton-valid')) disableSkeleton(node);
+                        continue;
                     }
 
                     const progressBar = node.querySelector('[role="progressbar"]');
