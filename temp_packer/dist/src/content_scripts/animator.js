@@ -151,24 +151,39 @@ function injectAnimationStyles() {
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: background-color 0.3s ease;
-        opacity: 0; /* Started hidden for fade in */
-        touch-action: none; /* Prevent scroll */
+        transition: background-color 0.3s ease, opacity 0.3s ease;
+        opacity: 0;
+        touch-action: none;
     }
     .x-lightbox.active {
         opacity: 1;
     }
     
-    .x-lightbox-img {
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: contain;
+    .x-lightbox-track {
+        display: flex;
+        height: 100%;
+        width: 100%;
         transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
         will-change: transform;
     }
     
-    .x-lightbox-closing {
-        background-color: rgba(0, 0, 0, 0) !important;
+    .x-lightbox-img-wrapper {
+        width: 100vw;
+        height: 100vh;
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .x-lightbox-img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain; /* Ensure it fits within screen */
+        width: auto;
+        height: auto;
+        user-select: none;
+        -webkit-user-drag: none;
     }
   `;
     document.head.appendChild(style);
@@ -187,58 +202,39 @@ function triggerBackNav() {
 
 // Custom Lightbox Logic
 let activeLightbox = null;
-let lightboxImg = null;
+let lightboxTrack = null;
 let imageList = [];
 let currentImageIndex = 0;
 
 // Gesture state
 let gestureStartX = 0;
 let gestureStartY = 0;
-let gestureCurrentX = 0;
-let gestureCurrentY = 0;
+let trackStartX = 0;
 let isDraggingX = false;
 let isDraggingY = false;
 
 function collectImages(startImg) {
-    // Collect all media images currently valid in the DOM
-    // Filter out small avatars or icons if possible, though 'pbs.twimg.com/media' usually targets content
     const allImages = Array.from(document.querySelectorAll('img[src*="pbs.twimg.com/media"]'));
 
-    // Filter to ensure we only get actual content images (avoiding weird duplicates if any)
-    // We can filter by verifying they are likely inside a tweet or media container
-    // For now, simple selection is robust enough for the user's "timeline flow" request
+    // Deduplicate based on src (sometimes X renders duplicates)
+    const seen = new Set();
+    imageList = [];
+    allImages.forEach(img => {
+        if (!seen.has(img.src)) {
+            seen.add(img.src);
+            imageList.push({
+                src: img.src,
+                highRes: img.src.replace(/name=\w+/, 'name=large'),
+                element: img
+            });
+        }
+    });
 
-    imageList = allImages.map(img => ({
-        src: img.src,
-        highRes: img.src.replace(/name=\w+/, 'name=large'),
-        element: img
-    }));
-
-    // Find index of the clicked image
     currentImageIndex = imageList.findIndex(item => item.src === startImg.src);
     if (currentImageIndex === -1) {
-        // Fallback if src changed or not found
         imageList = [{ src: startImg.src, highRes: startImg.src.replace(/name=\w+/, 'name=large') }];
         currentImageIndex = 0;
     }
-}
-
-function updateLightboxImage(index, direction = 0) {
-    if (!lightboxImg || !imageList[index]) return;
-
-    const targetSrc = imageList[index].highRes;
-
-    // Reset transform/transitions
-    lightboxImg.style.transition = 'none';
-    lightboxImg.style.transform = 'translate(0, 0) scale(1)';
-    lightboxImg.style.opacity = '1';
-
-    // If direction provided, we can animate exit/enter? 
-    // For simplicity/responsiveness, just swap src and reset position.
-    // User requested swipe, so manual drag handles the animation mostly.
-
-    lightboxImg.src = targetSrc;
-    currentImageIndex = index;
 }
 
 function openLightbox(sourceImg) {
@@ -246,62 +242,118 @@ function openLightbox(sourceImg) {
 
     collectImages(sourceImg);
 
-    // 0. Push history
     history.pushState({ x_lightbox: true }, '', '');
 
-    // 2. Create Elements
+    // Create DOM
     const lightbox = document.createElement('div');
     lightbox.className = 'x-lightbox';
 
-    const img = document.createElement('img');
-    img.src = imageList[currentImageIndex].src;
-    img.className = 'x-lightbox-img';
+    const track = document.createElement('div');
+    track.className = 'x-lightbox-track';
 
-    lightbox.appendChild(img);
+    // Build slides (Lazy load implies we put placeholders, but for smoothness let's put imgs)
+    // To avoid loading ALL heavy images at once, we load current, prev, next immediately
+    imageList.forEach((item, index) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'x-lightbox-img-wrapper';
+
+        const img = document.createElement('img');
+        img.className = 'x-lightbox-img';
+
+        // Load immediately if close to current index
+        if (Math.abs(index - currentImageIndex) <= 1) {
+            img.src = item.highRes;
+        } else {
+            img.dataset.src = item.highRes; // Lazy
+        }
+
+        wrapper.appendChild(img);
+        track.appendChild(wrapper);
+    });
+
+    lightbox.appendChild(track);
     document.body.appendChild(lightbox);
 
     activeLightbox = lightbox;
-    lightboxImg = img;
+    lightboxTrack = track;
+
+    // Set initial position without animation
+    track.style.transition = 'none';
+    updateTrackPosition();
 
     // Force reflow
     lightbox.getBoundingClientRect();
-    lightbox.classList.add('active');
 
-    // Switch to high res immediately
-    setTimeout(() => { img.src = imageList[currentImageIndex].highRes; }, 50);
+    // Animate In
+    setTimeout(() => {
+        lightbox.classList.add('active');
+        // Enable transition for interactions
+        track.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
+    }, 10);
 
     // Gestures
-    activeLightbox.addEventListener('touchstart', onTouchStart, { passive: false });
-    activeLightbox.addEventListener('touchmove', onTouchMove, { passive: false });
-    activeLightbox.addEventListener('touchend', onTouchEnd, { passive: false });
+    lightbox.addEventListener('touchstart', onTouchStart, { passive: false });
+    lightbox.addEventListener('touchmove', onTouchMove, { passive: false });
+    lightbox.addEventListener('touchend', onTouchEnd, { passive: false });
+}
+
+function updateTrackPosition() {
+    if (!lightboxTrack) return;
+    const translateX = -(currentImageIndex * 100); // 100vw units
+    lightboxTrack.style.transform = `translateX(${translateX}vw)`;
+
+    // Load nearby images
+    loadNearbyImages();
+}
+
+function loadNearbyImages() {
+    if (!lightboxTrack) return;
+    const slides = lightboxTrack.children;
+    for (let i = -1; i <= 1; i++) {
+        const idx = currentImageIndex + i;
+        if (idx >= 0 && idx < slides.length) {
+            const img = slides[idx].querySelector('img');
+            if (img && img.dataset.src) {
+                img.src = img.dataset.src;
+                delete img.dataset.src;
+            }
+        }
+    }
 }
 
 function onTouchStart(e) {
     if (e.touches.length !== 1) return;
     gestureStartX = e.touches[0].clientX;
     gestureStartY = e.touches[0].clientY;
-    gestureCurrentX = gestureStartX;
-    gestureCurrentY = gestureStartY;
+
+    // Get current transform value for track logic is tricky with vw.
+    // Simpler: Track assumes current index base.
+    trackStartX = -(currentImageIndex * window.innerWidth);
+
     isDraggingX = false;
     isDraggingY = false;
 
-    if (lightboxImg) {
-        lightboxImg.style.transition = 'none';
+    if (lightboxTrack) {
+        lightboxTrack.style.transition = 'none';
+        // Fix scaling origin to current image center to prevent drift during Y-axis drag
+        const originX = (currentImageIndex * window.innerWidth) + (window.innerWidth / 2);
+        lightboxTrack.style.transformOrigin = `${originX}px center`;
     }
 }
 
 function onTouchMove(e) {
-    if (!activeLightbox || !lightboxImg) return;
-    e.preventDefault(); // Lock browser scroll
+    if (!activeLightbox || !lightboxTrack) return;
 
-    gestureCurrentX = e.touches[0].clientX;
-    gestureCurrentY = e.touches[0].clientY;
+    // Don't prevent default immediately to allow vertical scroll check?
+    // Actually we want to block scroll to prevent page behind moving.
+    e.preventDefault();
 
-    const deltaX = gestureCurrentX - gestureStartX;
-    const deltaY = gestureCurrentY - gestureStartY;
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const deltaX = currentX - gestureStartX;
+    const deltaY = currentY - gestureStartY;
 
     if (!isDraggingX && !isDraggingY) {
-        // Determine direction
         if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
             isDraggingX = true;
         } else if (Math.abs(deltaY) > 10) {
@@ -310,102 +362,91 @@ function onTouchMove(e) {
     }
 
     if (isDraggingY) {
-        // Pull to close
+        // Drag track vertically for close cue (move whole track)
         const scale = Math.max(0.6, 1 - Math.abs(deltaY) / 1000);
-        lightboxImg.style.transform = `translateY(${deltaY}px) scale(${scale})`;
+        const currentTrackX = -(currentImageIndex * window.innerWidth);
+
+        // Combine X position (fixed) with Y drag
+        lightboxTrack.style.transform = `translate(${currentTrackX}px, ${deltaY}px) scale(${scale})`;
+
         const opacity = Math.max(0, 1 - Math.abs(deltaY) / 500);
         activeLightbox.style.backgroundColor = `rgba(0, 0, 0, ${opacity})`;
-    } else if (isDraggingX) {
-        // Swipe navigation
-        // Add resistance at edges
-        let translateX = deltaX;
+    }
+    else if (isDraggingX) {
+        // Move track horizontally
+        const currentTrackX = -(currentImageIndex * window.innerWidth);
+        let newX = currentTrackX + deltaX;
+
+        // Resistance at edges
         if ((currentImageIndex === 0 && deltaX > 0) ||
             (currentImageIndex === imageList.length - 1 && deltaX < 0)) {
-            translateX = deltaX * 0.3; // Resistance
+            newX = currentTrackX + (deltaX * 0.4);
         }
-        lightboxImg.style.transform = `translateX(${translateX}px)`;
+
+        lightboxTrack.style.transform = `translateX(${newX}px)`;
     }
 }
 
 function onTouchEnd(e) {
-    if (!activeLightbox || !lightboxImg) return;
+    if (!activeLightbox || !lightboxTrack) return;
 
-    const deltaX = gestureCurrentX - gestureStartX;
-    const deltaY = gestureCurrentY - gestureStartY;
+    const currentX = e.changedTouches[0].clientX;
+    const currentY = e.changedTouches[0].clientY;
+    const deltaX = currentX - gestureStartX;
+    const deltaY = currentY - gestureStartY;
+
+    // Restore transition
+    lightboxTrack.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
 
     if (isDraggingY) {
-        // Check for close
         if (Math.abs(deltaY) > 100) {
             closeLightbox(false);
         } else {
-            // Revert
-            resetImagePosition();
+            // Revert properties
+            activeLightbox.style.backgroundColor = 'rgba(0, 0, 0, 1)';
+            updateTrackPosition(); // Snap back to correct X, Y=0
         }
-    } else if (isDraggingX) {
-        // Check for navigation
-        const threshold = 80;
+    }
+    else if (isDraggingX) {
+        const threshold = 50; // Reduced from 20% width to 40px for lighter swipe
         if (deltaX < -threshold && currentImageIndex < imageList.length - 1) {
-            // Next
-            transitionToImage(currentImageIndex + 1, -1);
+            currentImageIndex++;
         } else if (deltaX > threshold && currentImageIndex > 0) {
-            // Prev
-            transitionToImage(currentImageIndex - 1, 1);
-        } else {
-            // Revert
-            resetImagePosition();
+            currentImageIndex--;
         }
-    } else {
-        // Tap (neither X nor Y drag) -> Do nothing (tap to close removed)
+        updateTrackPosition(); // Snap to new index
+    }
+    else {
+        // Tap -> Do nothing
     }
 
     isDraggingX = false;
     isDraggingY = false;
 }
 
-function resetImagePosition() {
-    if (!lightboxImg || !activeLightbox) return;
-    lightboxImg.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
-    lightboxImg.style.transform = 'translate(0, 0) scale(1)';
-    activeLightbox.style.backgroundColor = 'rgba(0, 0, 0, 1)';
-}
-
-function transitionToImage(newIndex, direction) {
-    if (!lightboxImg) return;
-
-    // Simply snap for now, or slide out
-    // Since we are reusing the img element, a fade or simple snap is best to avoid complex double-buffering
-    // Let's do: Slide out fully -> Swap Src -> Reset Position (hidden) -> Slide in?
-    // Faster feeling: Just swap and reset.
-
-    updateLightboxImage(newIndex);
-}
-
-
 function closeLightbox(fromHistory = false) {
     if (!activeLightbox) return;
 
-    // If triggered by UI interaction, pop history (which will trigger popstate -> closeLightbox(true))
     if (!fromHistory) {
         history.back();
         return;
     }
 
-    activeLightbox.classList.add('x-lightbox-closing');
+    // Animate out
+    activeLightbox.classList.remove('active'); // Fade out opacity
 
-    if (lightboxImg) {
-        lightboxImg.style.transition = 'all 0.25s ease-out';
-        lightboxImg.style.opacity = '0';
-        lightboxImg.style.transform = 'scale(0.8)';
+    // Zoom out track slightly for finish feel
+    if (lightboxTrack) {
+        lightboxTrack.style.transform += ' scale(0.9)';
     }
 
-    // Capture reference to remove
     const targetLightbox = activeLightbox;
     activeLightbox = null;
-    lightboxImg = null;
+    lightboxTrack = null;
 
     setTimeout(() => {
         if (targetLightbox) targetLightbox.remove();
-    }, 250);
+    }, 300);
 }
 
 function attachInteractionListeners() {
