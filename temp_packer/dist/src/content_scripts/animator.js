@@ -98,7 +98,7 @@ function injectAnimationStyles() {
 
     /* Modal & Image Zoom Animations */
     .x - zoom -in {
-        animation: x - zoom -in -anim 0.25s cubic- bezier(0.34, 1.56, 0.64, 1) forwards; /* Pop effect */
+        animation: x - zoom -in -anim 0.25s cubic- bezier(0.34, 1.56, 0.64, 1) forwards;
     transform - origin: center;
 }
     
