@@ -108,13 +108,34 @@ function injectAnimationStyles() {
     }
     
     @keyframes x-slide-in-right-anim {
-        from { transform: translateX(50px); opacity: 0; }
+        from { transform: translateX(30px); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
     }
     
     @keyframes x-slide-in-left-anim {
-        from { transform: translateX(-50px); opacity: 0; }
+        from { transform: translateX(-30px); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Modal & Image Zoom Animations */
+    .x-zoom-in {
+        animation: x-zoom-in-anim 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; /* Pop effect */
+        transform-origin: center;
+    }
+    
+    .x-modal-zoom {
+        animation: x-modal-zoom-anim 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        transform-origin: center;
+    }
+
+    @keyframes x-zoom-in-anim {
+        from { transform: scale(0.8); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+    
+    @keyframes x-modal-zoom-anim {
+        from { transform: scale(0.92); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
     }
   `;
     document.head.appendChild(style);
@@ -128,7 +149,7 @@ function triggerBackNav() {
     if (backNavTimeout) clearTimeout(backNavTimeout);
     backNavTimeout = setTimeout(() => {
         isBackNavigation = false;
-    }, 1000); // Reset after 1s
+    }, 1000);
 }
 
 function attachInteractionListeners() {
@@ -141,13 +162,11 @@ function attachInteractionListeners() {
         if (target.closest('[data-testid="app-bar-back-button"]')) {
             triggerBackNav();
         }
-
-        // Haptics (Removed)
     }, true);
 
     // 2. Press Animation
     document.addEventListener('touchstart', (e) => {
-        const target = e.target.closest('div[role="button"], a, button, [data-testid="tweet"], [data-testid="like"], [data-testid="retweet"], [data-testid="reply"]');
+        const target = e.target.closest('div[role="button"], a, button, [data-testid="tweet"], [data-testid="like"], [data-testid="retweet"], [data-testid="reply"], [data-testid="file-image"]');
         if (target) {
             target.classList.add('x-press-target');
             target.classList.add('x-press-active');
@@ -166,19 +185,15 @@ function attachInteractionListeners() {
         const target = e.target.closest('.x-press-target');
         if (target) target.classList.remove('x-press-active');
     }, { passive: true });
-
-    // Haptics removed as per user request
 }
 
 // Observe for new tweets/elements to animate
 const animObserver = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
 
-        // 1. Handle removed nodes (Cleanup skeleton if loader is removed)
+        // 1. Handle removed nodes
         for (const node of mutation.removedNodes) {
             if (node.nodeType === 1) {
-                // If the progress bar is removed, we must clean up the skeleton
-                // even if we didn't see the new content add event yet
                 if (node.getAttribute('role') === 'progressbar' || node.querySelector('[role="progressbar"]')) {
                     const cell = mutation.target.closest('[data-testid="cellInnerDiv"]');
                     if (cell) disableSkeleton(cell);
@@ -190,46 +205,62 @@ const animObserver = new MutationObserver((mutations) => {
         for (const node of mutation.addedNodes) {
             if (node.nodeType === 1) {
                 const testId = node.getAttribute('data-testid');
+                const role = node.getAttribute('role');
 
-                // Case A: New Cell Inserted
-                if (testId === 'cellInnerDiv') {
+                // --- A. Modal / Dialog Animations ---
+                if (role === 'dialog' || testId === 'sheetDialog' || node.querySelector('[role="dialog"]')) {
+                    const dialog = role === 'dialog' ? node : node.querySelector('[role="dialog"]');
+                    if (dialog) {
+                        // 1. Image Viewer (Swipe to dismiss usually indicates media viewer)
+                        if (dialog.querySelector('[data-testid="swipe-to-dismiss"]') || dialog.querySelector('img[draggable="true"]')) {
+                            dialog.classList.add('x-zoom-in');
+                        }
+                        // 2. Tweet Composer (Look for textarea or specific buttons)
+                        else if (dialog.querySelector('[data-testid="tweetTextarea_0"]') || dialog.querySelector('[data-testid="toolBar"]')) {
+                            dialog.classList.add('x-modal-zoom');
+                        }
+                        // 3. Generic Dialogs (Menu, etc) - optional, maybe skip to avoid weirdness
+                        else {
+                            dialog.classList.add('x-modal-zoom');
+                        }
+                    }
+                }
+
+                // --- B. Page / Column Animations ---
+                // If the primary column is re-rendered (page transition)
+                else if (testId === 'primaryColumn' || (role === 'main' && node.querySelector('[data-testid="primaryColumn"]'))) {
+                    const target = testId === 'primaryColumn' ? node : node.querySelector('[data-testid="primaryColumn"]');
+                    if (target) {
+                        if (isBackNavigation) {
+                            target.classList.add('x-slide-in-left');
+                        } else {
+                            target.classList.add('x-slide-in-right');
+                        }
+                    }
+                }
+
+                // --- C. List Content Animations (Virtual Scroll) ---
+                else if (testId === 'cellInnerDiv') {
                     const progressBar = node.querySelector('[role="progressbar"]');
                     if (progressBar) {
                         enableSkeleton(node);
                     } else {
-                        // Content cell
                         disableSkeleton(node);
                         const content = node.firstElementChild;
-                        // Apply animation based on navigation direction
                         if (content) {
-                            if (isBackNavigation) {
-                                content.classList.add('x-slide-in-left');
-                            } else {
-                                content.classList.add('x-fade-in');
-                            }
+                            // Only fade in if not covered by page transition
+                            // But adding it safely doesn't hurt
+                            content.classList.add('x-fade-in');
                         }
                     }
                 }
-                // Case B: Content injected into existing cell
-                else if (testId) {
-                    // Check if this is likely content (not a wrapper or script)
-                    // Broaden check to catch any meaningful display element
+                else if (['tweet', 'notification', 'UserCell'].includes(testId)) {
                     const cell = node.closest('[data-testid="cellInnerDiv"]');
-                    if (cell) {
-                        // If any content is added to a skeleton cell, disable skeleton immediately
-                        disableSkeleton(cell);
-                    }
-
-                    if (['tweet', 'notification', 'UserCell'].includes(testId)) {
-                        if (isBackNavigation) {
-                            node.classList.add('x-slide-in-left');
-                        } else {
-                            node.classList.add('x-fade-in');
-                        }
-                    }
+                    if (cell) disableSkeleton(cell);
+                    node.classList.add('x-fade-in');
                 }
 
-                // Case C: Progress bar injected later (rare but possible)
+                // --- D. Late Skeleton Check ---
                 if (!testId) {
                     const progressBar = node.querySelector('[role="progressbar"]');
                     if (progressBar) {
