@@ -89,21 +89,22 @@ function cleanup() {
 // --- Optimization Logic ---
 
 function removeAds() {
-    // 1. Data-testid based removal (Most reliable)
+    // 1. Data-testid based removal
     const ads = document.querySelectorAll(SELECTORS.adPlacement);
     ads.forEach(ad => {
-        // Hide the parent cell that contains the ad
         const tweetCell = ad.closest('[data-testid="cellInnerDiv"]');
-        if (tweetCell && tweetCell.style.display !== 'none') {
-            tweetCell.style.display = 'none';
-            log('Removed ad via placementTracking');
+        if (tweetCell && tweetCell.dataset.xmoHidden !== 'true') {
+            // Use opacity and height management instead of simple display:none
+            // to avoid breaking X's virtual scroll calculations
+            tweetCell.style.opacity = '0';
+            tweetCell.style.pointerEvents = 'none';
+            tweetCell.style.height = '0.01px'; // Minimum height to prevent collapse overlap
+            tweetCell.dataset.xmoHidden = 'true';
+            log('Removed ad safely');
         }
     });
-
-    // 2. SVG Path based removal (For "Promoted" label icons if text is obfuscated)
-    // This is brittle, using text content check as a backup on specific spans if needed.
-    // Currently rely on native DOM structures as much as possible.
 }
+
 
 function removeSidebar() {
     // On mobile, the sidebar is usually hidden or different.

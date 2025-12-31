@@ -50,21 +50,19 @@ function injectAnimationStyles() {
 
     /* Fade In Effect for new tweets */
     .x-fade-in {
-      animation: x-fade-in-anim 0.4s ease-out forwards;
-      opacity: 0;
+      animation: x-fade-in-anim 0.3s ease-out forwards;
     }
 
     @keyframes x-fade-in-anim {
       from {
         opacity: 0;
-        transform: translateY(10px);
       }
       to {
         opacity: 1;
-        transform: translateY(0);
       }
     }
   `;
+
     document.head.appendChild(style);
 }
 
