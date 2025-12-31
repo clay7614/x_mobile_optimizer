@@ -49,15 +49,15 @@ function injectAnimationStyles() {
     .x-skeleton-loading {
         position: relative;
         display: block;
-        min-height: var(--x-skeleton-height, 400px);
+        min-height: 60px; /* Fallback small height to avoid collapse, but small enough to avoid massive overlap */
         contain: layout style;
-        pointer-events: none;
+        /* pointer-events: none; REMOVED to allow scrolling */
     }
 
-    /* Hide the original spinner */
+    /* Hide the original spinner but keep its layout space */
     .x-skeleton-loading [role="progressbar"] {
         opacity: 0 !important;
-        visibility: hidden !important;
+        visibility: hidden !important; /* Maintains layout space */
     }
 
     .x-skeleton-loading::after {
@@ -558,8 +558,8 @@ function enableSkeleton(cell) {
     if (cell.querySelector('[data-testid="tweet"]')) return;
 
     cell.classList.add('x-skeleton-loading');
-    // Force large height to show multiple cards
-    cell.style.setProperty('--x-skeleton-height', '400px');
+    // Remove forced height to prevent layout overlaps in virtual list
+    cell.style.removeProperty('--x-skeleton-height');
 }
 
 function disableSkeleton(cell) {
