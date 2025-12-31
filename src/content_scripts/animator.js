@@ -18,6 +18,11 @@ function initAnimator() {
             injectAnimationStyles();
             attachInteractionListeners();
             startAnimationObserver();
+
+            // Show timeline overlay immediately on /home if loading
+            if (window.location.pathname.endsWith('/home')) {
+                showTimelineOverlay();
+            }
         }
     });
 }
@@ -89,6 +94,28 @@ function injectAnimationStyles() {
     @keyframes x-shimmer {
         0% { background-position: -200% 0; }
         100% { background-position: 200% 0; }
+    }
+
+    /* Timeline Overlay Skeleton (for /home only) */
+    .x-timeline-skeleton-overlay {
+        position: absolute;
+        top: 180px; /* Skip header and compose area */
+        left: 0;
+        width: 100%;
+        min-height: calc(100% - 180px);
+        background: rgb(0, 0, 0);
+        z-index: 2000;
+        overflow-y: hidden;
+        box-sizing: border-box;
+        transition: opacity 0.3s ease-out;
+    }
+    .x-timeline-skeleton-overlay.x-hiding {
+        opacity: 0;
+        pointer-events: none;
+    }
+    /* Ensure primaryColumn can contain the overlay */
+    [data-testid="primaryColumn"] {
+        position: relative !important;
     }
 
 
@@ -172,6 +199,68 @@ function triggerBackNav() {
     backNavTimeout = setTimeout(() => {
         isBackNavigation = false;
     }, 1000);
+}
+
+// Timeline Overlay Skeleton System (for /home only)
+let timelineOverlayActive = false;
+let hasTimelineContent = false; // Prevent race conditions
+
+function showTimelineOverlay() {
+    if (timelineOverlayActive) return;
+    if (hasTimelineContent) return; // Don't show if content already appeared
+    if (!window.location.pathname.endsWith('/home')) return;
+
+    // Check if already has content
+    const existingTweets = document.querySelectorAll('[data-testid="tweet"]');
+    if (existingTweets.length > 2) {
+        hasTimelineContent = true;
+        return;
+    }
+
+    // Wait for primaryColumn to exist - do not use body fallback
+    const primaryColumn = document.querySelector('[data-testid="primaryColumn"]');
+    if (!primaryColumn) {
+        // Retry after a short delay
+        setTimeout(() => showTimelineOverlay(), 100);
+        return;
+    }
+
+    // RE-CHECK: Tweets may have loaded while waiting for primaryColumn
+    const tweetsNow = document.querySelectorAll('[data-testid="tweet"]');
+    if (tweetsNow.length > 0) {
+        hasTimelineContent = true;
+        return; // Tweets loaded during wait, don't show overlay
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'x-timeline-skeleton-overlay';
+    overlay.id = 'x-timeline-skeleton-overlay';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'x-skeleton-wrapper';
+
+    for (let i = 0; i < 10; i++) {
+        const card = document.createElement('div');
+        card.className = 'x-skeleton-card';
+        const height = Math.floor(Math.random() * (400 - 150 + 1)) + 150;
+        card.style.height = `${height}px`;
+        wrapper.appendChild(card);
+    }
+
+    overlay.appendChild(wrapper);
+    primaryColumn.appendChild(overlay);
+    timelineOverlayActive = true;
+}
+
+function hideTimelineOverlay() {
+    const overlay = document.getElementById('x-timeline-skeleton-overlay');
+    if (overlay) {
+        overlay.classList.add('x-hiding');
+        setTimeout(() => {
+            overlay.remove();
+        }, 300);
+    }
+    timelineOverlayActive = false;
 }
 
 // Custom Lightbox Logic
@@ -652,8 +741,10 @@ const animObserver = new MutationObserver((mutations) => {
                 else if (testId === 'primaryColumn' || (role === 'main' && node.querySelector('[data-testid="primaryColumn"]'))) {
                     const target = testId === 'primaryColumn' ? node : node.querySelector('[data-testid="primaryColumn"]');
                     if (target) {
-                        // Reverted to simple fade-in or no animation as requested
-                        // target.classList.add('x-fade-in'); 
+                        // Show timeline overlay on /home
+                        if (window.location.pathname.endsWith('/home')) {
+                            showTimelineOverlay();
+                        }
                     }
                 }
                 else if (testId === 'cellInnerDiv') {
@@ -662,32 +753,43 @@ const animObserver = new MutationObserver((mutations) => {
                         enableSkeleton(node);
                     } else {
                         disableSkeleton(node);
-                        // NEW: Also check if there is a parent generic skeleton (e.g. primaryColumn)
-                        const parentSkeleton = node.closest('.x-skeleton-container');
-                        if (parentSkeleton && parentSkeleton !== node) {
-                            disableSkeleton(parentSkeleton);
-                        }
-
                         const content = node.firstElementChild;
                         if (content) content.classList.add('x-fade-in');
+
+                        // Hide timeline overlay if content is present on /home
+                        if (window.location.pathname.endsWith('/home') && timelineOverlayActive) {
+                            hideTimelineOverlay();
+                        }
                     }
                 }
                 // NEW: Catch cases where spinner is added LATER into an existing cell
                 else if (role === 'progressbar' || (node.querySelector && node.querySelector('[role="progressbar"]'))) {
                     const progressBar = role === 'progressbar' ? node : node.querySelector('[role="progressbar"]');
 
-                    // Priority 1: Tweet Cell
+                    // Priority 1: Tweel Cell
                     const cell = progressBar.closest('[data-testid="cellInnerDiv"]');
                     if (cell) {
-                        enableSkeleton(cell, false); // Standard cell skeleton
+                        enableSkeleton(cell);
                     }
-                    // Priority 2: Generic Page Loader (e.g. Profile, Notifications, Home initial load)
+                    // Priority 2: Generic Page Loader (e.g. Profile, Notifications initial load)
                     else {
                         const primaryCol = progressBar.closest('[data-testid="primaryColumn"]');
                         if (primaryCol) {
-                            // Only create overlay if one doesn't exist already
-                            if (!primaryCol.querySelector('.x-generic-skeleton-overlay')) {
-                                createGenericSkeletonOverlay(primaryCol, progressBar);
+                            // NEW: On /home, we use the overlay, so HIDE the original spinner
+                            if (window.location.pathname.endsWith('/home')) {
+                                progressBar.style.opacity = '0';
+                                return;
+                            }
+
+                            // Find a suitable container locally
+                            const container = progressBar.parentElement;
+                            if (container && container.tagName === 'DIV' && !container.classList.contains('x-skeleton-container')) {
+                                // ensure it's not a small button loader
+                                const rect = progressBar.getBoundingClientRect();
+                                // If spinner is reasonably large or in a large container
+                                if (rect.width > 20 || container.offsetHeight > 100) {
+                                    enableSkeleton(container);
+                                }
                             }
                         }
                     }
@@ -695,20 +797,16 @@ const animObserver = new MutationObserver((mutations) => {
                 else if (testId === 'tweet' || (node.querySelector && node.querySelector('[data-testid="tweet"]'))) {
                     const tweetNode = testId === 'tweet' ? node : node.querySelector('[data-testid="tweet"]');
                     if (tweetNode) {
+                        hasTimelineContent = true; // Mark content as loaded
                         tweetNode.classList.add('x-fade-in');
-
-                        // Clean up parent skeleton if it exists (standard case)
-                        const parentSkeleton = tweetNode.closest('.x-skeleton-container');
-                        if (parentSkeleton) {
-                            disableSkeleton(parentSkeleton);
+                        // Clean up parent skeleton if it exists
+                        const parentCell = tweetNode.closest('div[data-testid="cellInnerDiv"]');
+                        if (parentCell) {
+                            disableSkeleton(parentCell);
                         }
-
-                        // NEW: Aggressive cleanup for Home Timeline
-                        // If *any* tweet loads, we assume the initial page load is finished.
-                        // Find and remove any "generic" skeleton containers (not cell-specific) in the main column.
-                        const primaryCol = tweetNode.closest('[data-testid="primaryColumn"]');
-                        if (primaryCol) {
-                            removeGenericSkeletonOverlay(primaryCol);
+                        // Hide timeline overlay if on /home
+                        if (window.location.pathname.endsWith('/home') && timelineOverlayActive) {
+                            hideTimelineOverlay();
                         }
                     }
                 }
@@ -717,11 +815,14 @@ const animObserver = new MutationObserver((mutations) => {
     }
 });
 
-function enableSkeleton(cell, isGeneric = false) {
+function enableSkeleton(cell) {
     if (cell.classList.contains('x-skeleton-container')) return;
 
     // Strict safety check: Disable on status pages to prevent React conflicts
     if (window.location.pathname.includes('/status/')) return;
+
+    // Skip DOM-based skeleton on /home - use overlay instead
+    if (window.location.pathname.endsWith('/home')) return;
 
     if (cell.querySelector('[data-testid="tweet"]')) return;
 
@@ -740,13 +841,6 @@ function enableSkeleton(cell, isGeneric = false) {
     }
 
     cell.appendChild(wrapper);
-
-    // NEW: Timer-based auto-cleanup for generic skeletons (safety net)
-    if (isGeneric) {
-        setTimeout(() => {
-            disableSkeleton(cell);
-        }, 5000); // Auto-cleanup after 5 seconds
-    }
 }
 
 function disableSkeleton(cell) {
@@ -754,60 +848,6 @@ function disableSkeleton(cell) {
         cell.classList.remove('x-skeleton-container');
         const wrapper = cell.querySelector('.x-skeleton-wrapper');
         if (wrapper) wrapper.remove();
-    }
-}
-
-// NEW: Generic Skeleton Overlay Functions (for initial page loaders)
-function createGenericSkeletonOverlay(primaryCol, progressBar) {
-    // Create an overlay that covers the loading area
-    const overlay = document.createElement('div');
-    overlay.className = 'x-generic-skeleton-overlay';
-    overlay.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        min-height: 100vh;
-        background: rgb(0, 0, 0);
-        z-index: 10;
-    `;
-
-    // Create skeleton cards inside
-    const wrapper = document.createElement('div');
-    wrapper.className = 'x-skeleton-wrapper';
-    for (let i = 0; i < 40; i++) {
-        const card = document.createElement('div');
-        card.className = 'x-skeleton-card';
-        const height = Math.floor(Math.random() * (600 - 200 + 1)) + 200;
-        card.style.height = `${height}px`;
-        wrapper.appendChild(card);
-    }
-    overlay.appendChild(wrapper);
-
-    // Insert overlay after the spinner's container to cover the loading area
-    const spinnerContainer = progressBar.parentElement;
-    if (spinnerContainer && spinnerContainer.parentElement) {
-        spinnerContainer.parentElement.style.position = 'relative';
-        spinnerContainer.parentElement.appendChild(overlay);
-    }
-
-    // Watch for spinner removal to clean up overlay
-    const observer = new MutationObserver((mutations) => {
-        // Check if progressbar is still in the DOM
-        if (!document.body.contains(progressBar)) {
-            removeGenericSkeletonOverlay(primaryCol);
-            observer.disconnect();
-        }
-    });
-    observer.observe(spinnerContainer.parentElement || primaryCol, { childList: true, subtree: true });
-}
-
-function removeGenericSkeletonOverlay(primaryCol) {
-    const overlay = primaryCol.querySelector('.x-generic-skeleton-overlay');
-    if (overlay) {
-        overlay.style.transition = 'opacity 0.3s ease';
-        overlay.style.opacity = '0';
-        setTimeout(() => overlay.remove(), 300);
     }
 }
 
