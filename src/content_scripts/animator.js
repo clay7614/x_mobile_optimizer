@@ -421,7 +421,11 @@ function onTouchEnd(e) {
             // Revert Child Transform with transition
             const currentSlide = lightboxTrack.children[currentImageIndex];
             if (currentSlide) {
-                currentSlide.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
+                // Force reflow to ensure transition starts from current state
+                void currentSlide.offsetHeight;
+
+                // Use a smoother ease-out curve for natural return
+                currentSlide.style.transition = 'transform 0.35s cubic-bezier(0.15, 0.9, 0.3, 1.0)';
                 currentSlide.style.transform = '';
             }
 
