@@ -775,8 +775,8 @@ const animObserver = new MutationObserver((mutations) => {
                     else {
                         const primaryCol = progressBar.closest('[data-testid="primaryColumn"]');
                         if (primaryCol) {
-                            // NEW: On /home, we use the overlay, so HIDE the original spinner
-                            if (window.location.pathname.endsWith('/home')) {
+                            // NEW: On /home, we use the overlay for INITIAL load, so HIDE the original main spinner
+                            if (window.location.pathname.endsWith('/home') && timelineOverlayActive) {
                                 progressBar.style.opacity = '0';
                                 return;
                             }
@@ -821,8 +821,8 @@ function enableSkeleton(cell) {
     // Strict safety check: Disable on status pages to prevent React conflicts
     if (window.location.pathname.includes('/status/')) return;
 
-    // Skip DOM-based skeleton on /home - use overlay instead
-    if (window.location.pathname.endsWith('/home')) return;
+    // For /home, we use overlay for initial load, but DOM skeletons for infinite scroll
+    if (window.location.pathname.endsWith('/home') && timelineOverlayActive) return;
 
     if (cell.querySelector('[data-testid="tweet"]')) return;
 
