@@ -91,23 +91,7 @@ function injectAnimationStyles() {
         100% { background-position: 200% 0; }
     }
 
-    /* Navigation Animations */
-    .x-slide-in-right {
-        animation: x-slide-in-right-anim 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-    .x-slide-in-left {
-        animation: x-slide-in-left-anim 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
 
-    @keyframes x-slide-in-right-anim {
-        from { transform: translateX(50px); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-
-    @keyframes x-slide-in-left-anim {
-        from { transform: translateX(-50px); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
 
     /* Modal & Image Zoom Animations */
     .x-zoom-in {
@@ -179,26 +163,14 @@ function injectAnimationStyles() {
 }
 
 let isBackNavigation = false;
-let isForwardNavigation = false; // NEW: Track forward nav
 let isProgrammaticBack = false;
 let backNavTimeout;
-let forwardNavTimeout; // NEW
 
 function triggerBackNav() {
     isBackNavigation = true;
-    isForwardNavigation = false;
     if (backNavTimeout) clearTimeout(backNavTimeout);
     backNavTimeout = setTimeout(() => {
         isBackNavigation = false;
-    }, 1000);
-}
-
-function triggerForwardNav() {
-    isForwardNavigation = true;
-    isBackNavigation = false;
-    if (forwardNavTimeout) clearTimeout(forwardNavTimeout);
-    forwardNavTimeout = setTimeout(() => {
-        isForwardNavigation = false;
     }, 1000);
 }
 
@@ -625,146 +597,140 @@ function attachInteractionListeners() {
             return;
         }
 
-        // Forward Navigation Trigger (General Links)
-        // Detect clicks on links that are likely to cause a page transition
-        const forwardLink = target.closest('a[href]');
-        if (forwardLink) {
-            const href = forwardLink.getAttribute('href');
-            // Ignore special actions or same-page interactions
-            if (href && !href.startsWith('#') && !href.includes('mailto:') && !forwardLink.closest('[role="navigation"]')) {
-                triggerForwardNav();
+
+
+        document.addEventListener('touchstart', (e) => {
+            const target = e.target.closest('div[role="button"], a, button, [data-testid="tweet"], [data-testid="like"], [data-testid="retweet"], [data-testid="reply"], [data-testid="file-image"]');
+            if (target) {
+                target.classList.add('x-press-target');
+                target.classList.add('x-press-active');
             }
-        }
-    }, true);
+        }, { passive: true });
 
-    document.addEventListener('touchstart', (e) => {
-        const target = e.target.closest('div[role="button"], a, button, [data-testid="tweet"], [data-testid="like"], [data-testid="retweet"], [data-testid="reply"], [data-testid="file-image"]');
-        if (target) {
-            target.classList.add('x-press-target');
-            target.classList.add('x-press-active');
-        }
-    }, { passive: true });
+        document.addEventListener('touchend', (e) => {
+            const target = e.target.closest('.x-press-target');
+            if (target) target.classList.remove('x-press-active');
+        }, { passive: true });
 
-    document.addEventListener('touchend', (e) => {
-        const target = e.target.closest('.x-press-target');
-        if (target) target.classList.remove('x-press-active');
-    }, { passive: true });
-
-    document.addEventListener('touchcancel', (e) => {
-        const target = e.target.closest('.x-press-target');
-        if (target) target.classList.remove('x-press-active');
-    }, { passive: true });
-}
+        document.addEventListener('touchcancel', (e) => {
+            const target = e.target.closest('.x-press-target');
+            if (target) target.classList.remove('x-press-active');
+        }, { passive: true });
+    }
 
 const animObserver = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-        for (const node of mutation.addedNodes) {
-            if (node.nodeType === 1) {
-                const testId = node.getAttribute('data-testid');
-                const role = node.getAttribute('role');
+        for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
+                if (node.nodeType === 1) {
+                    const testId = node.getAttribute('data-testid');
+                    const role = node.getAttribute('role');
 
-                if (role === 'dialog' || testId === 'sheetDialog' || node.querySelector('[role="dialog"]')) {
-                    const dialog = role === 'dialog' ? node : node.querySelector('[role="dialog"]');
-                    if (dialog) {
-                        if (dialog.querySelector('[data-testid="swipe-to-dismiss"]') || dialog.querySelector('img[draggable="true"]')) {
-                            dialog.classList.add('x-zoom-in');
-                        } else {
-                            dialog.classList.add('x-modal-zoom');
+                    if (role === 'dialog' || testId === 'sheetDialog' || node.querySelector('[role="dialog"]')) {
+                        const dialog = role === 'dialog' ? node : node.querySelector('[role="dialog"]');
+                        if (dialog) {
+                            if (dialog.querySelector('[data-testid="swipe-to-dismiss"]') || dialog.querySelector('img[draggable="true"]')) {
+                                dialog.classList.add('x-zoom-in');
+                            } else {
+                                dialog.classList.add('x-modal-zoom');
+                                // Prevent auto-focus on compose modal
+                                // Attempt to blur the text area if it grabs focus
+                                setTimeout(() => {
+                                    const activeInput = dialog.querySelector('[contenteditable="true"], textarea, input');
+                                    if (activeInput) {
+                                        activeInput.blur();
+                                    }
+                                }, 50);
+                                setTimeout(() => {
+                                    const activeInput = dialog.querySelector('[contenteditable="true"], textarea, input');
+                                    if (activeInput && document.activeElement === activeInput) {
+                                        activeInput.blur();
+                                    }
+                                }, 300);
+                            }
                         }
                     }
-                }
-                else if (testId === 'primaryColumn' || (role === 'main' && node.querySelector('[data-testid="primaryColumn"]'))) {
-                    const target = testId === 'primaryColumn' ? node : node.querySelector('[data-testid="primaryColumn"]');
-                    if (target) {
-                        // Apply animation based on direction
-                        // If standard forward nav, slide in from right.
-                        // If back nav, slide in from left.
-                        // Default to fade-in if direction is unclear to avoid jarring jumps.
-                        if (isBackNavigation) {
-                            target.classList.add('x-slide-in-left');
-                        } else if (isForwardNavigation) {
-                            target.classList.add('x-slide-in-right');
-                        } else {
-                            // Optional: Default entry animation
-                            target.classList.add('x-fade-in');
+                    else if (testId === 'primaryColumn' || (role === 'main' && node.querySelector('[data-testid="primaryColumn"]'))) {
+                        const target = testId === 'primaryColumn' ? node : node.querySelector('[data-testid="primaryColumn"]');
+                        if (target) {
+                            // Reverted to simple fade-in or no animation as requested
+                            // target.classList.add('x-fade-in'); 
                         }
                     }
-                }
-                else if (testId === 'cellInnerDiv') {
-                    const progressBar = node.querySelector('[role="progressbar"]');
-                    if (progressBar) {
-                        enableSkeleton(node);
-                    } else {
-                        disableSkeleton(node);
-                        const content = node.firstElementChild;
-                        if (content) content.classList.add('x-fade-in');
+                    else if (testId === 'cellInnerDiv') {
+                        const progressBar = node.querySelector('[role="progressbar"]');
+                        if (progressBar) {
+                            enableSkeleton(node);
+                        } else {
+                            disableSkeleton(node);
+                            const content = node.firstElementChild;
+                            if (content) content.classList.add('x-fade-in');
+                        }
                     }
-                }
-                // NEW: Catch cases where spinner is added LATER into an existing cell
-                else if (role === 'progressbar' || (node.querySelector && node.querySelector('[role="progressbar"]'))) {
-                    const progressBar = role === 'progressbar' ? node : node.querySelector('[role="progressbar"]');
-                    const cell = progressBar.closest('[data-testid="cellInnerDiv"]');
-                    if (cell) {
-                        enableSkeleton(cell);
+                    // NEW: Catch cases where spinner is added LATER into an existing cell
+                    else if (role === 'progressbar' || (node.querySelector && node.querySelector('[role="progressbar"]'))) {
+                        const progressBar = role === 'progressbar' ? node : node.querySelector('[role="progressbar"]');
+                        const cell = progressBar.closest('[data-testid="cellInnerDiv"]');
+                        if (cell) {
+                            enableSkeleton(cell);
+                        }
                     }
-                }
-                else if (testId === 'tweet' || (node.querySelector && node.querySelector('[data-testid="tweet"]'))) {
-                    const tweetNode = testId === 'tweet' ? node : node.querySelector('[data-testid="tweet"]');
-                    if (tweetNode) {
-                        tweetNode.classList.add('x-fade-in');
-                        // Clean up parent skeleton if it exists
-                        const parentCell = tweetNode.closest('div[data-testid="cellInnerDiv"]');
-                        if (parentCell) {
-                            disableSkeleton(parentCell);
+                    else if (testId === 'tweet' || (node.querySelector && node.querySelector('[data-testid="tweet"]'))) {
+                        const tweetNode = testId === 'tweet' ? node : node.querySelector('[data-testid="tweet"]');
+                        if (tweetNode) {
+                            tweetNode.classList.add('x-fade-in');
+                            // Clean up parent skeleton if it exists
+                            const parentCell = tweetNode.closest('div[data-testid="cellInnerDiv"]');
+                            if (parentCell) {
+                                disableSkeleton(parentCell);
+                            }
                         }
                     }
                 }
             }
         }
+    });
+
+    function enableSkeleton(cell) {
+        if (cell.classList.contains('x-skeleton-container')) return;
+
+        // Strict safety check: Disable on status pages to prevent React conflicts
+        if (window.location.pathname.includes('/status/')) return;
+
+        if (cell.querySelector('[data-testid="tweet"]')) return;
+
+        cell.classList.add('x-skeleton-container');
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'x-skeleton-wrapper';
+
+        // Create random cards to simulate feed
+        for (let i = 0; i < 40; i++) {
+            const card = document.createElement('div');
+            card.className = 'x-skeleton-card';
+            const height = Math.floor(Math.random() * (600 - 200 + 1)) + 200;
+            card.style.height = `${height}px`;
+            wrapper.appendChild(card);
+        }
+
+        cell.appendChild(wrapper);
     }
-});
 
-function enableSkeleton(cell) {
-    if (cell.classList.contains('x-skeleton-container')) return;
-
-    // Strict safety check: Disable on status pages to prevent React conflicts
-    if (window.location.pathname.includes('/status/')) return;
-
-    if (cell.querySelector('[data-testid="tweet"]')) return;
-
-    cell.classList.add('x-skeleton-container');
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'x-skeleton-wrapper';
-
-    // Create random cards to simulate feed
-    for (let i = 0; i < 40; i++) {
-        const card = document.createElement('div');
-        card.className = 'x-skeleton-card';
-        const height = Math.floor(Math.random() * (600 - 200 + 1)) + 200;
-        card.style.height = `${height}px`;
-        wrapper.appendChild(card);
+    function disableSkeleton(cell) {
+        if (cell.classList.contains('x-skeleton-container')) {
+            cell.classList.remove('x-skeleton-container');
+            const wrapper = cell.querySelector('.x-skeleton-wrapper');
+            if (wrapper) wrapper.remove();
+        }
     }
 
-    cell.appendChild(wrapper);
-}
-
-function disableSkeleton(cell) {
-    if (cell.classList.contains('x-skeleton-container')) {
-        cell.classList.remove('x-skeleton-container');
-        const wrapper = cell.querySelector('.x-skeleton-wrapper');
-        if (wrapper) wrapper.remove();
+    function startAnimationObserver() {
+        const targetNode = document.body;
+        if (!targetNode) return;
+        animObserver.observe(targetNode, { childList: true, subtree: true });
     }
-}
 
-function startAnimationObserver() {
-    const targetNode = document.body;
-    if (!targetNode) return;
-    animObserver.observe(targetNode, { childList: true, subtree: true });
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAnimator);
-} else {
-    initAnimator();
-}
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAnimator);
+    } else {
+        initAnimator();
+    }
