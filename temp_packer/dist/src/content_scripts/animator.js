@@ -75,11 +75,12 @@ function injectAnimationStyles() {
 
     .x-skeleton-card {
         width: 100%;
-        height: 120px; /* Approx tweet height */
+        height: 900px; /* 3x previous height of 300px */
         background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.05) 100%);
         border-bottom: 1px solid rgba(255,255,255,0.1);
         position: relative;
         overflow: hidden;
+        margin-bottom: 1px;
     }
     
     /* Shimmer effect */
@@ -143,38 +144,53 @@ function attachInteractionListeners() {
 const animObserver = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
 
-        // Check for removed nodes (clean up skeletons if needed)
-        // Usually X replaces the loader cell with content, so strict cleanup might not be needed if we target the cellInnerDiv correctly.
+        // 1. Handle removed nodes (Cleanup skeleton if loader is removed)
+        for (const node of mutation.removedNodes) {
+            if (node.nodeType === 1) {
+                // If the progress bar is removed, we must clean up the skeleton
+                // even if we didn't see the new content add event yet
+                if (node.getAttribute('role') === 'progressbar' || node.querySelector('[role="progressbar"]')) {
+                    const cell = mutation.target.closest('[data-testid="cellInnerDiv"]');
+                    if (cell) disableSkeleton(cell);
+                }
+            }
+        }
 
+        // 2. Handle added nodes
         for (const node of mutation.addedNodes) {
             if (node.nodeType === 1) {
                 const testId = node.getAttribute('data-testid');
 
-                // 1. Content Fade-in
+                // Case A: New Cell Inserted
                 if (testId === 'cellInnerDiv') {
-                    // Check if this is a loading spinner cell
                     const progressBar = node.querySelector('[role="progressbar"]');
                     if (progressBar) {
-                        // This is a loader cell. Convert to skeleton.
                         enableSkeleton(node);
                     } else {
-                        // Normal content: Ensure skeleton cleanup in case of reuse
+                        // Content cell
                         disableSkeleton(node);
-
                         const content = node.firstElementChild;
+                        // Apply fade-in only if it's main content
                         if (content) content.classList.add('x-fade-in');
                     }
                 }
-                else if (['tweet', 'notification', 'UserCell'].includes(testId)) {
-                    // Cleanup parent if needed
+                // Case B: Content injected into existing cell
+                else if (testId) {
+                    // Check if this is likely content (not a wrapper or script)
+                    // Broaden check to catch any meaningful display element
                     const cell = node.closest('[data-testid="cellInnerDiv"]');
-                    if (cell) disableSkeleton(cell);
+                    if (cell) {
+                        // If any content is added to a skeleton cell, disable skeleton immediately
+                        disableSkeleton(cell);
+                    }
 
-                    node.classList.add('x-fade-in');
+                    if (['tweet', 'notification', 'UserCell'].includes(testId)) {
+                        node.classList.add('x-fade-in');
+                    }
                 }
 
-                // 2. Catch nested progress bar if inserted later
-                if (testId === undefined || testId === null) {
+                // Case C: Progress bar injected later (rare but possible)
+                if (!testId) {
                     const progressBar = node.querySelector('[role="progressbar"]');
                     if (progressBar) {
                         const cell = node.closest('[data-testid="cellInnerDiv"]');
@@ -189,6 +205,9 @@ const animObserver = new MutationObserver((mutations) => {
 function enableSkeleton(cell) {
     if (cell.classList.contains('x-skeleton-valid')) return;
 
+    // Safety: don't override existing content
+    if (cell.querySelector('[data-testid="tweet"]')) return;
+
     cell.classList.add('x-skeleton-valid');
     cell.classList.add('x-skeleton-container');
 
@@ -196,8 +215,8 @@ function enableSkeleton(cell) {
     skeletonWrapper.className = 'x-skeleton-wrapper';
     skeletonWrapper.style.width = '100%';
 
-    // Increased count to allow more scroll
-    for (let i = 0; i < 12; i++) {
+    // User requested 100 cards
+    for (let i = 0; i < 100; i++) {
         const card = document.createElement('div');
         card.className = 'x-skeleton-card';
         skeletonWrapper.appendChild(card);
@@ -210,8 +229,14 @@ function disableSkeleton(cell) {
     if (cell.classList.contains('x-skeleton-valid')) {
         cell.classList.remove('x-skeleton-valid');
         cell.classList.remove('x-skeleton-container');
+
+        // Remove wrapper
         const wrapper = cell.querySelector('.x-skeleton-wrapper');
         if (wrapper) wrapper.remove();
+
+        // Reset styles that might cause layout issues
+        cell.style.height = 'auto';
+        cell.style.minHeight = '0px';
     }
 }
 
