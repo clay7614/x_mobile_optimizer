@@ -75,7 +75,7 @@ function injectAnimationStyles() {
 
     .x-skeleton-card {
         width: 100%;
-        height: 900px; /* 3x previous height of 300px */
+        /* Height is set dynamically via JS for randomness */
         background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.05) 100%);
         border-bottom: 1px solid rgba(255,255,255,0.1);
         position: relative;
