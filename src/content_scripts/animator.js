@@ -50,147 +50,125 @@ function injectAnimationStyles() {
         transition: transform 0.2s ease-out;
     }
 
-    /* Skeleton Loading Effect */
-    .x-skeleton-container {
-        /* Force height to simulate multiple tweets */
-        min-height: 100vh; 
-        background-color: transparent;
-        display: flex;
-        flex-direction: column;
-        gap: 1px; /* border separator simulation */
-        pointer-events: none; /* Let touches pass through */
+    /* Skeleton Loading - CSS Only approach to avoid DOM conflicts */
+    .x-skeleton-loading {
+        position: relative;
+        display: block;
+        min-height: var(--x-skeleton-height, 150px);
+        /* Force layout stability */
+        contain: layout style; 
     }
 
-    .x-skeleton-valid {
-        /* Only show skeleton when this class is applied to a valid loader container */
-        position: relative;
-    }
-    
-    .x-skeleton-valid [role="progressbar"] {
-        /* Hide original spinner but keep it in DOM for React */
-        opacity: 0 !important;
-        position: absolute;
-    }
-
-    .x-skeleton-card {
-        width: 100%;
-        /* Height is set dynamically via JS */
-        flex: 0 0 auto; /* Prevent shrinking in flex container */
-        background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.05) 100%);
-        border-bottom: 1px solid rgba(255,255,255,0.1);
-        position: relative;
-        overflow: hidden;
-        margin-bottom: 1px;
-    }
-    
-    /* Shimmer effect */
-    .x-skeleton-card::after {
+    .x-skeleton-loading::after {
         content: "";
         position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+        inset: 0;
+        z-index: 10;
+        background: 
+            linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent),
+            repeating-linear-gradient(180deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 119px, transparent 119px, transparent 120px);
+        background-size: 200% 100%, 100% 100%;
         animation: x-shimmer 1.5s infinite;
+        pointer-events: none;
     }
 
     @keyframes x-shimmer {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(100%); }
+        0% { background-position: -200% 0, 0 0; }
+        100% { background-position: 200% 0, 0 0; }
     }
-    
+  `;
+
     /* Navigation Animations */
-    .x-slide-in-right {
-        animation: x-slide-in-right-anim 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    .x - slide -in -right {
+        animation: x - slide -in -right - anim 0.3s cubic - bezier(0.16, 1, 0.3, 1) forwards;
     }
-    .x-slide-in-left {
-        animation: x-slide-in-left-anim 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    .x - slide -in -left {
+        animation: x - slide -in -left - anim 0.3s cubic - bezier(0.16, 1, 0.3, 1) forwards;
     }
-    
-    @keyframes x-slide-in-right-anim {
+
+    @keyframes x - slide -in -right - anim {
         from { transform: translateX(30px); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
     }
-    
-    @keyframes x-slide-in-left-anim {
+
+    @keyframes x - slide -in -left - anim {
         from { transform: translateX(-30px); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
     }
 
     /* Modal & Image Zoom Animations */
-    .x-zoom-in {
-        animation: x-zoom-in-anim 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; /* Pop effect */
-        transform-origin: center;
-    }
+    .x - zoom -in {
+        animation: x - zoom -in -anim 0.25s cubic- bezier(0.34, 1.56, 0.64, 1) forwards; /* Pop effect */
+    transform - origin: center;
+}
     
-    .x-modal-zoom {
-        animation: x-modal-zoom-anim 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-        transform-origin: center;
-    }
+    .x - modal - zoom {
+    animation: x - modal - zoom - anim 0.25s cubic - bezier(0.2, 0.8, 0.2, 1) forwards;
+    transform - origin: center;
+}
 
-    @keyframes x-zoom-in-anim {
+@keyframes x - zoom -in -anim {
         from { transform: scale(0.8); opacity: 0; }
         to { transform: scale(1); opacity: 1; }
-    }
-    
-    @keyframes x-modal-zoom-anim {
+}
+
+@keyframes x - modal - zoom - anim {
         from { transform: scale(0.92); opacity: 0; }
         to { transform: scale(1); opacity: 1; }
-    }
+}
 
     /* Custom Lightbox */
-    .x-lightbox {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background-color: rgba(0, 0, 0, 1);
-        z-index: 99999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: background-color 0.3s ease, opacity 0.3s ease;
-        opacity: 0;
-        touch-action: none;
-    }
-    .x-lightbox.active {
-        opacity: 1;
-    }
+    .x - lightbox {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background - color: rgba(0, 0, 0, 1);
+    z - index: 99999;
+    display: flex;
+    align - items: center;
+    justify - content: center;
+    transition: background - color 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+    touch - action: none;
+}
+    .x - lightbox.active {
+    opacity: 1;
+}
     
-    .x-lightbox-track {
-        display: flex;
-        height: 100%;
-        width: 100%;
-        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-        will-change: transform;
-    }
+    .x - lightbox - track {
+    display: flex;
+    height: 100 %;
+    width: 100 %;
+    transition: transform 0.3s cubic - bezier(0.2, 0.8, 0.2, 1);
+    will - change: transform;
+}
     
-    .x-lightbox-img-wrapper {
-        width: 100vw;
-        height: 100vh;
-        flex: 0 0 auto;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
+    .x - lightbox - img - wrapper {
+    width: 100vw;
+    height: 100vh;
+    flex: 0 0 auto;
+    display: flex;
+    align - items: center;
+    justify - content: center;
+}
     
-    .x-lightbox-img {
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: contain; /* Ensure it fits within screen */
-        width: auto;
-        height: auto;
-        user-select: none;
-        -webkit-user-drag: none;
-    }
+    .x - lightbox - img {
+    max - width: 100 %;
+    max - height: 100 %;
+    object - fit: contain; /* Ensure it fits within screen */
+    width: auto;
+    height: auto;
+    user - select: none;
+    -webkit - user - drag: none;
+}
 
-    /* Force hide skeleton on status pages to prevent conflicts */
-    body.x-status-page .x-skeleton-container {
-        display: none !important;
-    }
-  `;
+/* Force hide skeleton on status pages to prevent conflicts */
+body.x - status - page.x - skeleton - container {
+    display: none!important;
+}
+`;
     document.head.appendChild(style);
 }
 
@@ -306,7 +284,7 @@ function openLightbox(sourceImg) {
 function updateTrackPosition() {
     if (!lightboxTrack) return;
     const translateX = -(currentImageIndex * 100); // 100vw units
-    lightboxTrack.style.transform = `translateX(${translateX}vw)`;
+    lightboxTrack.style.transform = `translateX(${ translateX }vw)`;
 
     // Load nearby images
     loadNearbyImages();
@@ -377,15 +355,15 @@ function onTouchMove(e) {
         const currentTrackX = -(currentImageIndex * window.innerWidth);
 
         // Track stays horizontal, only current slide moves Y/Scales
-        lightboxTrack.style.transform = `translateX(${currentTrackX}px)`;
+        lightboxTrack.style.transform = `translateX(${ currentTrackX }px)`;
 
         const currentSlide = lightboxTrack.children[currentImageIndex];
         if (currentSlide) {
-            currentSlide.style.transform = `translate(0px, ${deltaY}px) scale(${scale})`;
+            currentSlide.style.transform = `translate(0px, ${ deltaY }px) scale(${ scale })`;
         }
 
         const opacity = Math.max(0, 1 - Math.abs(deltaY) / 500);
-        activeLightbox.style.backgroundColor = `rgba(0, 0, 0, ${opacity})`;
+        activeLightbox.style.backgroundColor = `rgba(0, 0, 0, ${ opacity })`;
     }
     else if (isDraggingX) {
         // Move track horizontally
@@ -398,7 +376,7 @@ function onTouchMove(e) {
             newX = currentTrackX + (deltaX * 0.4);
         }
 
-        lightboxTrack.style.transform = `translateX(${newX}px)`;
+        lightboxTrack.style.transform = `translateX(${ newX }px)`;
     }
 }
 
@@ -493,12 +471,12 @@ function closeLightbox(fromHistory = false) {
                 // Approximation: Match width to screen width ratio
                 const scale = Math.max(0.1, rect.width / window.innerWidth);
 
-                targetTransform = `translate(${moveX}px, ${moveY}px) scale(${scale})`;
+                targetTransform = `translate(${ moveX }px, ${ moveY }px) scale(${ scale })`;
             }
         }
 
-        // Apply smooth exit to the wrapper
-        slide.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease';
+        // Apply smooth exit to the wrapper with slower timing (0.5s)
+        slide.style.transition = 'transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s ease';
         slide.style.transform = targetTransform;
         slide.style.opacity = '0';
     }
@@ -633,13 +611,7 @@ const animObserver = new MutationObserver((mutations) => {
 
                 // --- C. List Content Animations (Virtual Scroll) ---
                 else if (testId === 'cellInnerDiv') {
-                    // Strict disable: Do absolutely nothing with skeletons on status page
-                    if (window.location.pathname.includes('/status/')) {
-                        // Just in case one slipped in
-                        if (node.classList.contains('x-skeleton-valid')) disableSkeleton(node);
-                        continue;
-                    }
-
+                    // Optimized CSS-only approach allows us to enable this safely even on status pages
                     const progressBar = node.querySelector('[role="progressbar"]');
                     if (progressBar) {
                         enableSkeleton(node);
@@ -673,35 +645,28 @@ const animObserver = new MutationObserver((mutations) => {
 });
 
 function enableSkeleton(cell) {
-    if (cell.classList.contains('x-skeleton-valid')) return;
-
-    // Disable skeleton on Status (Tweet Detail) pages to prevent reply loading issues
-    if (window.location.pathname.includes('/status/')) return;
+    if (cell.classList.contains('x-skeleton-loading')) return;
 
     // Safety: don't override existing content
     if (cell.querySelector('[data-testid="tweet"]')) return;
+    
+    // CSS-based skeleton
+    cell.classList.add('x-skeleton-loading');
+    
+    // Random height for realism (between 150px and 400px)
+    const height = Math.floor(Math.random() * (400 - 150 + 1)) + 150;
+    cell.style.setProperty('--x-skeleton-height', `${ height } px`);
+}
 
-    cell.classList.add('x-skeleton-valid');
-    cell.classList.add('x-skeleton-container');
-
-    const skeletonWrapper = document.createElement('div');
-    skeletonWrapper.className = 'x-skeleton-wrapper';
-    skeletonWrapper.style.width = '100%';
-
-    // User requested 40 cards with random heights
-    for (let i = 0; i < 40; i++) {
-        const card = document.createElement('div');
-        card.className = 'x-skeleton-card';
-
-        // Random height between 200 and 600
-        const randomHeight = Math.floor(Math.random() * (600 - 200 + 1)) + 200;
-        card.style.height = `${randomHeight}px`;
-        card.style.minHeight = `${randomHeight}px`; // Force height
-
-        skeletonWrapper.appendChild(card);
+function disableSkeleton(cell) {
+    if (cell.classList.contains('x-skeleton-loading')) {
+        cell.classList.remove('x-skeleton-loading');
+        cell.style.removeProperty('--x-skeleton-height');
+        
+        // Ensure regular styles
+        cell.style.height = 'auto';
+        cell.style.minHeight = '0px';
     }
-
-    cell.appendChild(skeletonWrapper);
 }
 
 function disableSkeleton(cell) {
