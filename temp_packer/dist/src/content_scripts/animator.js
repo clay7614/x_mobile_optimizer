@@ -616,121 +616,121 @@ function attachInteractionListeners() {
             const target = e.target.closest('.x-press-target');
             if (target) target.classList.remove('x-press-active');
         }, { passive: true });
-    }
-
+    }, true);
+}
 const animObserver = new MutationObserver((mutations) => {
-        for (const mutation of mutations) {
-            for (const node of mutation.addedNodes) {
-                if (node.nodeType === 1) {
-                    const testId = node.getAttribute('data-testid');
-                    const role = node.getAttribute('role');
+    for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+            if (node.nodeType === 1) {
+                const testId = node.getAttribute('data-testid');
+                const role = node.getAttribute('role');
 
-                    if (role === 'dialog' || testId === 'sheetDialog' || node.querySelector('[role="dialog"]')) {
-                        const dialog = role === 'dialog' ? node : node.querySelector('[role="dialog"]');
-                        if (dialog) {
-                            if (dialog.querySelector('[data-testid="swipe-to-dismiss"]') || dialog.querySelector('img[draggable="true"]')) {
-                                dialog.classList.add('x-zoom-in');
-                            } else {
-                                dialog.classList.add('x-modal-zoom');
-                                // Prevent auto-focus on compose modal
-                                // Attempt to blur the text area if it grabs focus
-                                setTimeout(() => {
-                                    const activeInput = dialog.querySelector('[contenteditable="true"], textarea, input');
-                                    if (activeInput) {
-                                        activeInput.blur();
-                                    }
-                                }, 50);
-                                setTimeout(() => {
-                                    const activeInput = dialog.querySelector('[contenteditable="true"], textarea, input');
-                                    if (activeInput && document.activeElement === activeInput) {
-                                        activeInput.blur();
-                                    }
-                                }, 300);
-                            }
-                        }
-                    }
-                    else if (testId === 'primaryColumn' || (role === 'main' && node.querySelector('[data-testid="primaryColumn"]'))) {
-                        const target = testId === 'primaryColumn' ? node : node.querySelector('[data-testid="primaryColumn"]');
-                        if (target) {
-                            // Reverted to simple fade-in or no animation as requested
-                            // target.classList.add('x-fade-in'); 
-                        }
-                    }
-                    else if (testId === 'cellInnerDiv') {
-                        const progressBar = node.querySelector('[role="progressbar"]');
-                        if (progressBar) {
-                            enableSkeleton(node);
+                if (role === 'dialog' || testId === 'sheetDialog' || node.querySelector('[role="dialog"]')) {
+                    const dialog = role === 'dialog' ? node : node.querySelector('[role="dialog"]');
+                    if (dialog) {
+                        if (dialog.querySelector('[data-testid="swipe-to-dismiss"]') || dialog.querySelector('img[draggable="true"]')) {
+                            dialog.classList.add('x-zoom-in');
                         } else {
-                            disableSkeleton(node);
-                            const content = node.firstElementChild;
-                            if (content) content.classList.add('x-fade-in');
+                            dialog.classList.add('x-modal-zoom');
+                            // Prevent auto-focus on compose modal
+                            // Attempt to blur the text area if it grabs focus
+                            setTimeout(() => {
+                                const activeInput = dialog.querySelector('[contenteditable="true"], textarea, input');
+                                if (activeInput) {
+                                    activeInput.blur();
+                                }
+                            }, 50);
+                            setTimeout(() => {
+                                const activeInput = dialog.querySelector('[contenteditable="true"], textarea, input');
+                                if (activeInput && document.activeElement === activeInput) {
+                                    activeInput.blur();
+                                }
+                            }, 300);
                         }
                     }
-                    // NEW: Catch cases where spinner is added LATER into an existing cell
-                    else if (role === 'progressbar' || (node.querySelector && node.querySelector('[role="progressbar"]'))) {
-                        const progressBar = role === 'progressbar' ? node : node.querySelector('[role="progressbar"]');
-                        const cell = progressBar.closest('[data-testid="cellInnerDiv"]');
-                        if (cell) {
-                            enableSkeleton(cell);
-                        }
+                }
+                else if (testId === 'primaryColumn' || (role === 'main' && node.querySelector('[data-testid="primaryColumn"]'))) {
+                    const target = testId === 'primaryColumn' ? node : node.querySelector('[data-testid="primaryColumn"]');
+                    if (target) {
+                        // Reverted to simple fade-in or no animation as requested
+                        // target.classList.add('x-fade-in'); 
                     }
-                    else if (testId === 'tweet' || (node.querySelector && node.querySelector('[data-testid="tweet"]'))) {
-                        const tweetNode = testId === 'tweet' ? node : node.querySelector('[data-testid="tweet"]');
-                        if (tweetNode) {
-                            tweetNode.classList.add('x-fade-in');
-                            // Clean up parent skeleton if it exists
-                            const parentCell = tweetNode.closest('div[data-testid="cellInnerDiv"]');
-                            if (parentCell) {
-                                disableSkeleton(parentCell);
-                            }
+                }
+                else if (testId === 'cellInnerDiv') {
+                    const progressBar = node.querySelector('[role="progressbar"]');
+                    if (progressBar) {
+                        enableSkeleton(node);
+                    } else {
+                        disableSkeleton(node);
+                        const content = node.firstElementChild;
+                        if (content) content.classList.add('x-fade-in');
+                    }
+                }
+                // NEW: Catch cases where spinner is added LATER into an existing cell
+                else if (role === 'progressbar' || (node.querySelector && node.querySelector('[role="progressbar"]'))) {
+                    const progressBar = role === 'progressbar' ? node : node.querySelector('[role="progressbar"]');
+                    const cell = progressBar.closest('[data-testid="cellInnerDiv"]');
+                    if (cell) {
+                        enableSkeleton(cell);
+                    }
+                }
+                else if (testId === 'tweet' || (node.querySelector && node.querySelector('[data-testid="tweet"]'))) {
+                    const tweetNode = testId === 'tweet' ? node : node.querySelector('[data-testid="tweet"]');
+                    if (tweetNode) {
+                        tweetNode.classList.add('x-fade-in');
+                        // Clean up parent skeleton if it exists
+                        const parentCell = tweetNode.closest('div[data-testid="cellInnerDiv"]');
+                        if (parentCell) {
+                            disableSkeleton(parentCell);
                         }
                     }
                 }
             }
         }
-    });
+    }
+});
 
-    function enableSkeleton(cell) {
-        if (cell.classList.contains('x-skeleton-container')) return;
+function enableSkeleton(cell) {
+    if (cell.classList.contains('x-skeleton-container')) return;
 
-        // Strict safety check: Disable on status pages to prevent React conflicts
-        if (window.location.pathname.includes('/status/')) return;
+    // Strict safety check: Disable on status pages to prevent React conflicts
+    if (window.location.pathname.includes('/status/')) return;
 
-        if (cell.querySelector('[data-testid="tweet"]')) return;
+    if (cell.querySelector('[data-testid="tweet"]')) return;
 
-        cell.classList.add('x-skeleton-container');
+    cell.classList.add('x-skeleton-container');
 
-        const wrapper = document.createElement('div');
-        wrapper.className = 'x-skeleton-wrapper';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'x-skeleton-wrapper';
 
-        // Create random cards to simulate feed
-        for (let i = 0; i < 40; i++) {
-            const card = document.createElement('div');
-            card.className = 'x-skeleton-card';
-            const height = Math.floor(Math.random() * (600 - 200 + 1)) + 200;
-            card.style.height = `${height}px`;
-            wrapper.appendChild(card);
-        }
-
-        cell.appendChild(wrapper);
+    // Create random cards to simulate feed
+    for (let i = 0; i < 40; i++) {
+        const card = document.createElement('div');
+        card.className = 'x-skeleton-card';
+        const height = Math.floor(Math.random() * (600 - 200 + 1)) + 200;
+        card.style.height = `${height}px`;
+        wrapper.appendChild(card);
     }
 
-    function disableSkeleton(cell) {
-        if (cell.classList.contains('x-skeleton-container')) {
-            cell.classList.remove('x-skeleton-container');
-            const wrapper = cell.querySelector('.x-skeleton-wrapper');
-            if (wrapper) wrapper.remove();
-        }
-    }
+    cell.appendChild(wrapper);
+}
 
-    function startAnimationObserver() {
-        const targetNode = document.body;
-        if (!targetNode) return;
-        animObserver.observe(targetNode, { childList: true, subtree: true });
+function disableSkeleton(cell) {
+    if (cell.classList.contains('x-skeleton-container')) {
+        cell.classList.remove('x-skeleton-container');
+        const wrapper = cell.querySelector('.x-skeleton-wrapper');
+        if (wrapper) wrapper.remove();
     }
+}
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initAnimator);
-    } else {
-        initAnimator();
-    }
+function startAnimationObserver() {
+    const targetNode = document.body;
+    if (!targetNode) return;
+    animObserver.observe(targetNode, { childList: true, subtree: true });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAnimator);
+} else {
+    initAnimator();
+}

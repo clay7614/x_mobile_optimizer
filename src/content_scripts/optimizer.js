@@ -7,8 +7,8 @@ console.log('X Mobile Optimizer: Loaded');
 
 // Configuration
 const CONFIG = {
-    removeAds: true,
-    removeSidebar: true,
+    removeAds: false, // Handled by another extension
+    removeSidebar: false, // Handled by another extension
     optimizeMedia: true,
     debug: false
 };
@@ -83,8 +83,33 @@ function startObservation() {
 function cleanup() {
     if (CONFIG.removeAds) removeAds();
     if (CONFIG.removeSidebar) removeSidebar();
-    if (CONFIG.optimizeMedia) optimizeMedia();
+    if (CONFIG.optimizeMedia) {
+        optimizeMedia();
+        optimizeRendering(); // New rendering optimizations
+    }
 }
+
+function injectResourceHints() {
+    const hints = [
+        'https://pbs.twimg.com',
+        'https://video.twimg.com',
+        'https://abs.twimg.com'
+    ];
+
+    hints.forEach(url => {
+        if (!document.head.querySelector(`link[rel="preconnect"][href="${url}"]`)) {
+            const link = document.createElement('link');
+            link.rel = 'preconnect';
+            link.href = url;
+            link.crossOrigin = 'anonymous'; // Important for CORS content
+            document.head.appendChild(link);
+        }
+    });
+    log('Resource hints injected');
+}
+
+// Inject hints immediately
+injectResourceHints();
 
 // --- Optimization Logic ---
 
@@ -126,23 +151,28 @@ function removeSidebar() {
     });
 }
 
-function optimizeMedia() {
-    // Set content-visibility to auto for off-screen interaction improvements
-    // This is a browser-native feature, harmless to apply broadly on big lists
-    const timeline = document.querySelector('[aria-label="Timeline: Your Home Timeline"]');
-    if (timeline) {
-        // Applying to children cells
-        // Careful not to break scroll position logic of virtual lists
-        // React virtual lists manage DOM mounting, so content-visibility might conflict.
-        // Instead, we can force lower quality images if we could intercept network requests,
-        // but that requires more permissions.
 
-        // For now, let's just ensure video autoplay is managed effectively if we can access video tags
-        const videos = document.querySelectorAll('video');
-        videos.forEach(video => {
-            // Logic to pause off-screen videos could go here if not native
-        });
-    }
+
+function optimizeRendering() {
+    // 1. Content Visibility for Timeline Cells
+    // This allows the browser to skip rendering work for off-screen tweets.
+    // We target the cell wrapper.
+    const cells = document.querySelectorAll('[data-testid="cellInnerDiv"]:not([data-xmo-opt="true"])');
+    cells.forEach(cell => {
+        // Apply only if not already optimized
+        cell.style.contentVisibility = 'auto';
+        cell.style.containIntrinsicSize = '1px 300px'; // Estimated average height to prevent scroll jumps
+        cell.dataset.xmoOpt = 'true';
+    });
+
+    // 2. Image Decoding
+    // Force async decoding to prevent main thread blocking during scroll
+    const images = document.querySelectorAll('img:not([decoding="async"])');
+    images.forEach(img => {
+        if (img.src && img.src.includes('twimg.com')) {
+            img.decoding = 'async';
+        }
+    });
 }
 
 // Run
