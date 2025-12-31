@@ -100,12 +100,12 @@ function injectAnimationStyles() {
     }
 
     @keyframes x-slide-in-right-anim {
-        from { transform: translateX(30px); opacity: 0; }
+        from { transform: translateX(50px); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
     }
 
     @keyframes x-slide-in-left-anim {
-        from { transform: translateX(-30px); opacity: 0; }
+        from { transform: translateX(-50px); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
     }
 
@@ -179,14 +179,26 @@ function injectAnimationStyles() {
 }
 
 let isBackNavigation = false;
+let isForwardNavigation = false; // NEW: Track forward nav
 let isProgrammaticBack = false;
 let backNavTimeout;
+let forwardNavTimeout; // NEW
 
 function triggerBackNav() {
     isBackNavigation = true;
+    isForwardNavigation = false;
     if (backNavTimeout) clearTimeout(backNavTimeout);
     backNavTimeout = setTimeout(() => {
         isBackNavigation = false;
+    }, 1000);
+}
+
+function triggerForwardNav() {
+    isForwardNavigation = true;
+    isBackNavigation = false;
+    if (forwardNavTimeout) clearTimeout(forwardNavTimeout);
+    forwardNavTimeout = setTimeout(() => {
+        isForwardNavigation = false;
     }, 1000);
 }
 
@@ -595,6 +607,8 @@ function attachInteractionListeners() {
 
     document.addEventListener('click', (e) => {
         const target = e.target;
+
+        // Image Viewer Trigger
         if (target.tagName === 'IMG' && target.src.includes('pbs.twimg.com/media')) {
             const link = target.closest('a');
             if (link && link.href.includes('/photo/') && !link.closest('[role="dialog"]')) {
@@ -604,8 +618,22 @@ function attachInteractionListeners() {
                 return;
             }
         }
+
+        // Back Button Trigger
         if (target.closest('[data-testid="app-bar-back-button"]')) {
             triggerBackNav();
+            return;
+        }
+
+        // Forward Navigation Trigger (General Links)
+        // Detect clicks on links that are likely to cause a page transition
+        const forwardLink = target.closest('a[href]');
+        if (forwardLink) {
+            const href = forwardLink.getAttribute('href');
+            // Ignore special actions or same-page interactions
+            if (href && !href.startsWith('#') && !href.includes('mailto:') && !forwardLink.closest('[role="navigation"]')) {
+                triggerForwardNav();
+            }
         }
     }, true);
 
@@ -648,7 +676,18 @@ const animObserver = new MutationObserver((mutations) => {
                 else if (testId === 'primaryColumn' || (role === 'main' && node.querySelector('[data-testid="primaryColumn"]'))) {
                     const target = testId === 'primaryColumn' ? node : node.querySelector('[data-testid="primaryColumn"]');
                     if (target) {
-                        target.classList.add(isBackNavigation ? 'x-slide-in-left' : 'x-slide-in-right');
+                        // Apply animation based on direction
+                        // If standard forward nav, slide in from right.
+                        // If back nav, slide in from left.
+                        // Default to fade-in if direction is unclear to avoid jarring jumps.
+                        if (isBackNavigation) {
+                            target.classList.add('x-slide-in-left');
+                        } else if (isForwardNavigation) {
+                            target.classList.add('x-slide-in-right');
+                        } else {
+                            // Optional: Default entry animation
+                            target.classList.add('x-fade-in');
+                        }
                     }
                 }
                 else if (testId === 'cellInnerDiv') {
