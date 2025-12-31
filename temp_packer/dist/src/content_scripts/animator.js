@@ -207,6 +207,9 @@ let isDraggingY = false;
 // Zoom & Pan state
 let currentScale = 1;
 let initialPinchDistance = 0;
+let initialPinchScale = 1;
+let pinchCenterX = 0;
+let pinchCenterY = 0;
 let isPinching = false;
 let panOffsetX = 0;
 let panOffsetY = 0;
@@ -340,6 +343,14 @@ function onTouchStart(e) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
         initialPinchDistance = Math.hypot(dx, dy);
+        initialPinchScale = currentScale;
+
+        // Record initial pinch center relative to screen center (transform origin)
+        pinchCenterX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - (window.innerWidth / 2);
+        pinchCenterY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - (window.innerHeight / 2);
+
+        startPanX = panOffsetX;
+        startPanY = panOffsetY;
     }
 }
 
@@ -353,14 +364,24 @@ function onTouchMove(e) {
         const distance = Math.hypot(dx, dy);
 
         const scaleChange = distance / initialPinchDistance;
-        const newScale = Math.min(Math.max(1, currentScale * scaleChange), 4);
+        const newScale = Math.min(Math.max(1, initialPinchScale * scaleChange), 4);
+
+        // Calculate current pinch center relative to screen center
+        const currentPinchX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - (window.innerWidth / 2);
+        const currentPinchY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - (window.innerHeight / 2);
+
+        // Update pan based on current center, creating a natural feel (zoom around fingers + dragging)
+        // Formula: newPan = currentCenter - (startCenter - startPan) * (newScale / startScale)
+        panOffsetX = currentPinchX - (pinchCenterX - startPanX) * (newScale / initialPinchScale);
+        panOffsetY = currentPinchY - (pinchCenterY - startPanY) * (newScale / initialPinchScale);
+        currentScale = newScale;
 
         const currentSlide = lightboxTrack.children[currentImageIndex];
         if (currentSlide) {
             const img = currentSlide.querySelector('img');
             if (img) {
                 img.style.transition = 'none';
-                img.style.transform = `scale(${newScale}) translate(${panOffsetX / newScale}px, ${panOffsetY / newScale}px)`;
+                img.style.transform = `translate(${panOffsetX}px, ${panOffsetY}px) scale(${currentScale})`;
             }
         }
         return;
@@ -382,7 +403,7 @@ function onTouchMove(e) {
         if (currentSlide) {
             const img = currentSlide.querySelector('img');
             if (img) {
-                img.style.transform = `scale(${currentScale}) translate(${panOffsetX / currentScale}px, ${panOffsetY / currentScale}px)`;
+                img.style.transform = `translate(${panOffsetX}px, ${panOffsetY}px) scale(${currentScale})`;
             }
         }
         return;
