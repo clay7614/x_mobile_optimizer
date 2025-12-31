@@ -6,8 +6,7 @@
 console.log('X Animator: Loaded');
 
 const ANIMATION_CONFIG = {
-    enableAnimations: true,
-    enableHaptics: true
+    enableAnimations: true
 };
 
 function initAnimator() {
@@ -126,18 +125,7 @@ function attachInteractionListeners() {
         if (target) target.classList.remove('x-press-active');
     }, { passive: true });
 
-    document.addEventListener('click', (e) => {
-        if (!ANIMATION_CONFIG.enableHaptics) return;
-
-        const target = e.target.closest('div[role="button"], a, button, [data-testid="like"], [data-testid="retweet"], [data-testid="reply"]');
-        if (target) {
-            // Light vibration for interactions
-            // navigator.vibrate is standard but implementation varies on Android browsers
-            if (navigator.vibrate) {
-                navigator.vibrate(5); // 5ms is extremely crisp
-            }
-        }
-    }, true);
+    // Haptics removed as per user request
 }
 
 // Observe for new tweets/elements to animate
