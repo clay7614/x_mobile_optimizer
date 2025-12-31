@@ -185,6 +185,11 @@ function injectAnimationStyles() {
         user-select: none;
         -webkit-user-drag: none;
     }
+
+    /* Force hide skeleton on status pages to prevent conflicts */
+    body.x-status-page .x-skeleton-container {
+        display: none !important;
+    }
   `;
     document.head.appendChild(style);
 }
@@ -335,9 +340,12 @@ function onTouchStart(e) {
 
     if (lightboxTrack) {
         lightboxTrack.style.transition = 'none';
-        // Fix scaling origin to current image center to prevent drift during Y-axis drag
-        const originX = (currentImageIndex * window.innerWidth) + (window.innerWidth / 2);
-        lightboxTrack.style.transformOrigin = `${originX}px center`;
+
+        // Reset child transitions/transforms to ensure clean slate
+        Array.from(lightboxTrack.children).forEach(child => {
+            child.style.transition = 'none';
+            child.style.transform = '';
+        });
     }
 }
 
@@ -362,12 +370,17 @@ function onTouchMove(e) {
     }
 
     if (isDraggingY) {
-        // Drag track vertically for close cue (move whole track)
+        // Drag current slide vertically (keep track horizontal)
         const scale = Math.max(0.6, 1 - Math.abs(deltaY) / 1000);
         const currentTrackX = -(currentImageIndex * window.innerWidth);
 
-        // Combine X position (fixed) with Y drag
-        lightboxTrack.style.transform = `translate(${currentTrackX}px, ${deltaY}px) scale(${scale})`;
+        // Track stays horizontal, only current slide moves Y/Scales
+        lightboxTrack.style.transform = `translateX(${currentTrackX}px)`;
+
+        const currentSlide = lightboxTrack.children[currentImageIndex];
+        if (currentSlide) {
+            currentSlide.style.transform = `translate(0px, ${deltaY}px) scale(${scale})`;
+        }
 
         const opacity = Math.max(0, 1 - Math.abs(deltaY) / 500);
         activeLightbox.style.backgroundColor = `rgba(0, 0, 0, ${opacity})`;
@@ -399,12 +412,20 @@ function onTouchEnd(e) {
     lightboxTrack.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
 
     if (isDraggingY) {
-        if (Math.abs(deltaY) > 100) {
+        if (Math.abs(deltaY) > 80) {
             closeLightbox(false);
         } else {
             // Revert properties
             activeLightbox.style.backgroundColor = 'rgba(0, 0, 0, 1)';
-            updateTrackPosition(); // Snap back to correct X, Y=0
+
+            // Revert Child Transform with transition
+            const currentSlide = lightboxTrack.children[currentImageIndex];
+            if (currentSlide) {
+                currentSlide.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
+                currentSlide.style.transform = '';
+            }
+
+            updateTrackPosition(); // Snap back to correct X
         }
     }
     else if (isDraggingX) {
@@ -511,6 +532,13 @@ function attachInteractionListeners() {
 
 // Observe for new tweets/elements to animate
 const animObserver = new MutationObserver((mutations) => {
+    // Check status page
+    if (window.location.pathname.includes('/status/')) {
+        document.body.classList.add('x-status-page');
+    } else {
+        document.body.classList.remove('x-status-page');
+    }
+
     for (const mutation of mutations) {
 
         // 1. Handle removed nodes
@@ -563,6 +591,12 @@ const animObserver = new MutationObserver((mutations) => {
 
                 // --- C. List Content Animations (Virtual Scroll) ---
                 else if (testId === 'cellInnerDiv') {
+                    // Force clean up if we are on status page and skeleton exists
+                    if (window.location.pathname.includes('/status/')) {
+                        disableSkeleton(node);
+                        return;
+                    }
+
                     const progressBar = node.querySelector('[role="progressbar"]');
                     if (progressBar) {
                         enableSkeleton(node);
@@ -597,6 +631,9 @@ const animObserver = new MutationObserver((mutations) => {
 
 function enableSkeleton(cell) {
     if (cell.classList.contains('x-skeleton-valid')) return;
+
+    // Disable skeleton on Status (Tweet Detail) pages to prevent reply loading issues
+    if (window.location.pathname.includes('/status/')) return;
 
     // Safety: don't override existing content
     if (cell.querySelector('[data-testid="tweet"]')) return;
