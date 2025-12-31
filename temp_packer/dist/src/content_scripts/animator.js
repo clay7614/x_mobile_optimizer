@@ -137,6 +137,38 @@ function injectAnimationStyles() {
         from { transform: scale(0.92); opacity: 0; }
         to { transform: scale(1); opacity: 1; }
     }
+
+    /* Custom Lightbox */
+    .x-lightbox {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(0, 0, 0, 1);
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.3s ease;
+        opacity: 0; /* Started hidden for fade in */
+        touch-action: none; /* Prevent scroll */
+    }
+    .x-lightbox.active {
+        opacity: 1;
+    }
+    
+    .x-lightbox-img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        will-change: transform;
+    }
+    
+    .x-lightbox-closing {
+        background-color: rgba(0, 0, 0, 0) !important;
+    }
   `;
     document.head.appendChild(style);
 }
@@ -152,17 +184,135 @@ function triggerBackNav() {
     }, 1000);
 }
 
+// Custom Lightbox Logic
+let activeLightbox = null;
+let lightboxStartY = 0;
+let lightboxCurrentY = 0;
+let lightboxImg = null;
+let originalRect = null;
+
+function openLightbox(sourceImg) {
+    if (activeLightbox) return;
+
+    // 1. Prepare info
+    originalRect = sourceImg.getBoundingClientRect();
+    const highResUrl = sourceImg.src.replace(/name=\w+/, 'name=large'); // Try to get large
+
+    // 2. Create Elements
+    const lightbox = document.createElement('div');
+    lightbox.className = 'x-lightbox';
+
+    const img = document.createElement('img');
+    img.src = sourceImg.src; // start with current src
+    img.className = 'x-lightbox-img';
+
+    // 3. Initial Position (matching original image)
+    // We use transform to animate from original rect to center
+    // However, fitting object-fit:contain is tricky to animate perfectly from object-fit:cover
+    // Simple approach: Fade in background, Zoom in image from center or simple scaling
+
+    // Better native feel: Calculate scale/translate
+    // But for simplicity and robustness against layout shifts:
+    // Start scale 0.5 -> 1 with opacity is easiest, but user wants "expand from image"
+
+    // Let's try formatting it
+    lightbox.appendChild(img);
+    document.body.appendChild(lightbox);
+
+    activeLightbox = lightbox;
+    lightboxImg = img;
+
+    // Force reflow
+    lightbox.getBoundingClientRect();
+    lightbox.classList.add('active');
+
+    // Switch to high res after animation starts
+    setTimeout(() => { img.src = highResUrl; }, 100);
+
+    // 4. Attach Close Listeners
+    lightbox.addEventListener('click', () => closeLightbox());
+
+    // Gestures
+    lightbox.addEventListener('touchstart', (e) => {
+        lightboxStartY = e.touches[0].clientY;
+        lightboxCurrentY = lightboxStartY;
+        img.style.transition = 'none'; // disable transition for direct 1:1 movement
+    });
+
+    lightbox.addEventListener('touchmove', (e) => {
+        e.preventDefault(); // stop scrolling
+        lightboxCurrentY = e.touches[0].clientY;
+        const deltaY = lightboxCurrentY - lightboxStartY;
+
+        // Move image with finger
+        // Scale down slightly as you pull away
+        const scale = Math.max(0.6, 1 - Math.abs(deltaY) / 1000);
+        img.style.transform = `translateY(${deltaY}px) scale(${scale})`;
+
+        // Fade background
+        const opacity = Math.max(0, 1 - Math.abs(deltaY) / 500);
+        lightbox.style.backgroundColor = `rgba(0, 0, 0, ${opacity})`;
+    });
+
+    lightbox.addEventListener('touchend', (e) => {
+        const deltaY = lightboxCurrentY - lightboxStartY;
+        if (Math.abs(deltaY) > 100) {
+            closeLightbox();
+        } else {
+            // Revert
+            img.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
+            img.style.transform = '';
+            lightbox.style.backgroundColor = 'rgba(0, 0, 0, 1)';
+        }
+    });
+}
+
+function closeLightbox() {
+    if (!activeLightbox) return;
+
+    activeLightbox.classList.add('x-lightbox-closing');
+
+    // Animate image out (simple fade/scale out for now, exact reverse to rect is complex math)
+    if (lightboxImg) {
+        lightboxImg.style.transition = 'all 0.25s ease-out';
+        lightboxImg.style.opacity = '0';
+        lightboxImg.style.transform = 'scale(0.8)';
+    }
+
+    setTimeout(() => {
+        if (activeLightbox) activeLightbox.remove();
+        activeLightbox = null;
+        lightboxImg = null;
+    }, 250);
+}
+
 function attachInteractionListeners() {
     // 1. Navigation Detection
     window.addEventListener('popstate', triggerBackNav);
 
+    // Global click handler
     document.addEventListener('click', (e) => {
         const target = e.target;
-        // Back Button
+
+        // A. Custom Lightbox Intercept
+        if (target.tagName === 'IMG' && target.src.includes('pbs.twimg.com/media')) {
+            // Check if it's inside a tweet or grid. Usually these images are wrapped in anchors.
+            // We want to stop that anchor.
+            const link = target.closest('a');
+            if (link && link.href.includes('/photo/') && !link.closest('[role="dialog"]')) {
+                // Only intercept timeline photos, not already in modal
+                e.preventDefault();
+                e.stopPropagation();
+                openLightbox(target);
+                return;
+            }
+        }
+
+        // B. Back Button
         if (target.closest('[data-testid="app-bar-back-button"]')) {
             triggerBackNav();
         }
-    }, true);
+    }, true); // Capture phase to prevent X specific handlers
 
     // 2. Press Animation
     document.addEventListener('touchstart', (e) => {
