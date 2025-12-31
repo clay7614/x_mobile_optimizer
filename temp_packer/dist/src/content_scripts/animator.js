@@ -204,6 +204,15 @@ let gestureStartTime = 0;
 let isDraggingX = false;
 let isDraggingY = false;
 
+// Zoom & Pan state
+let currentScale = 1;
+let initialPinchDistance = 0;
+let isPinching = false;
+let panOffsetX = 0;
+let panOffsetY = 0;
+let startPanX = 0;
+let startPanY = 0;
+
 function collectImages(startImg) {
     const allImages = Array.from(document.querySelectorAll('img[src*="pbs.twimg.com/media"]'));
     const seen = new Set();
@@ -298,21 +307,39 @@ function loadNearbyImages() {
 }
 
 function onTouchStart(e) {
-    if (e.touches.length !== 1) return;
-    gestureStartX = e.touches[0].clientX;
-    gestureStartY = e.touches[0].clientY;
-    gestureStartTime = Date.now();
+    if (e.touches.length === 1) {
+        gestureStartX = e.touches[0].clientX;
+        gestureStartY = e.touches[0].clientY;
+        gestureStartTime = Date.now();
 
-    trackStartX = -(currentImageIndex * window.innerWidth);
-    isDraggingX = false;
-    isDraggingY = false;
+        trackStartX = -(currentImageIndex * window.innerWidth);
+        isDraggingX = false;
+        isDraggingY = false;
+        isPinching = false;
 
-    if (lightboxTrack) {
-        lightboxTrack.style.transition = 'none';
-        Array.from(lightboxTrack.children).forEach(child => {
-            child.style.transition = 'none';
-            child.style.transform = '';
-        });
+        if (currentScale > 1) {
+            startPanX = panOffsetX;
+            startPanY = panOffsetY;
+        }
+
+        if (lightboxTrack) {
+            lightboxTrack.style.transition = 'none';
+            const slides = Array.from(lightboxTrack.children);
+            slides.forEach((child, idx) => {
+                if (idx !== currentImageIndex) {
+                    child.style.transition = 'none';
+                    child.style.transform = '';
+                }
+            });
+        }
+    } else if (e.touches.length === 2 && activeLightbox) {
+        isPinching = true;
+        isDraggingX = false;
+        isDraggingY = false;
+
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        initialPinchDistance = Math.hypot(dx, dy);
     }
 }
 
@@ -320,10 +347,46 @@ function onTouchMove(e) {
     if (!activeLightbox || !lightboxTrack) return;
     e.preventDefault();
 
+    if (e.touches.length === 2 && isPinching) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const distance = Math.hypot(dx, dy);
+
+        const scaleChange = distance / initialPinchDistance;
+        const newScale = Math.min(Math.max(1, currentScale * scaleChange), 4);
+
+        const currentSlide = lightboxTrack.children[currentImageIndex];
+        if (currentSlide) {
+            const img = currentSlide.querySelector('img');
+            if (img) {
+                img.style.transition = 'none';
+                img.style.transform = `scale(${newScale}) translate(${panOffsetX / newScale}px, ${panOffsetY / newScale}px)`;
+            }
+        }
+        return;
+    }
+
+    if (e.touches.length !== 1) return;
+
     const currentX = e.touches[0].clientX;
     const currentY = e.touches[0].clientY;
     const deltaX = currentX - gestureStartX;
     const deltaY = currentY - gestureStartY;
+
+    if (currentScale > 1) {
+        // Panning when zoomed
+        panOffsetX = startPanX + deltaX;
+        panOffsetY = startPanY + deltaY;
+
+        const currentSlide = lightboxTrack.children[currentImageIndex];
+        if (currentSlide) {
+            const img = currentSlide.querySelector('img');
+            if (img) {
+                img.style.transform = `scale(${currentScale}) translate(${panOffsetX / currentScale}px, ${panOffsetY / currentScale}px)`;
+            }
+        }
+        return;
+    }
 
     if (!isDraggingX && !isDraggingY) {
         if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
@@ -363,6 +426,31 @@ function onTouchMove(e) {
 
 function onTouchEnd(e) {
     if (!activeLightbox || !lightboxTrack) return;
+
+    if (isPinching) {
+        const currentSlide = lightboxTrack.children[currentImageIndex];
+        if (currentSlide) {
+            const img = currentSlide.querySelector('img');
+            if (img) {
+                const transform = img.style.transform;
+                const match = transform.match(/scale\(([^)]+)\)/);
+                if (match) {
+                    currentScale = parseFloat(match[1]);
+                }
+
+                if (currentScale <= 1.05) {
+                    resetZoomAndPan(img);
+                }
+            }
+        }
+        isPinching = false;
+        return;
+    }
+
+    if (currentScale > 1) {
+        // Just finished panning
+        return;
+    }
 
     const currentX = e.changedTouches[0].clientX;
     const currentY = e.changedTouches[0].clientY;
@@ -405,6 +493,15 @@ function onTouchEnd(e) {
 
     isDraggingX = false;
     isDraggingY = false;
+}
+
+function resetZoomAndPan(img) {
+    if (!img) return;
+    img.style.transition = 'transform 0.3s ease-out';
+    img.style.transform = 'scale(1) translate(0px, 0px)';
+    currentScale = 1;
+    panOffsetX = 0;
+    panOffsetY = 0;
 }
 
 function closeLightbox(fromHistory = false) {

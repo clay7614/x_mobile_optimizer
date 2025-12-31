@@ -33,19 +33,5 @@
     "16": "assets/icon_16.png",
     "48": "assets/icon_48.png",
     "128": "assets/icon_128.png"
-  },
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "assets/pwa_icon_192.png",
-        "assets/pwa_icon_512.png",
-        "assets/icon_128.png",
-        "favicon.ico"
-      ],
-      "matches": [
-        "*://twitter.com/*",
-        "*://x.com/*"
-      ]
-    }
-  ]
+  }
 }
