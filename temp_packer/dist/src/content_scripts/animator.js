@@ -395,6 +395,7 @@ function closeLightbox(fromHistory = false) {
     }
 
     activeLightbox.classList.remove('active');
+    activeLightbox.style.pointerEvents = 'none';
 
     if (lightboxTrack && lightboxTrack.children[currentImageIndex]) {
         const slide = lightboxTrack.children[currentImageIndex];
