@@ -662,6 +662,12 @@ const animObserver = new MutationObserver((mutations) => {
                         enableSkeleton(node);
                     } else {
                         disableSkeleton(node);
+                        // NEW: Also check if there is a parent generic skeleton (e.g. primaryColumn)
+                        const parentSkeleton = node.closest('.x-skeleton-container');
+                        if (parentSkeleton && parentSkeleton !== node) {
+                            disableSkeleton(parentSkeleton);
+                        }
+
                         const content = node.firstElementChild;
                         if (content) content.classList.add('x-fade-in');
                     }
@@ -669,19 +675,40 @@ const animObserver = new MutationObserver((mutations) => {
                 // NEW: Catch cases where spinner is added LATER into an existing cell
                 else if (role === 'progressbar' || (node.querySelector && node.querySelector('[role="progressbar"]'))) {
                     const progressBar = role === 'progressbar' ? node : node.querySelector('[role="progressbar"]');
+
+                    // Priority 1: Tweet Cell
                     const cell = progressBar.closest('[data-testid="cellInnerDiv"]');
                     if (cell) {
-                        enableSkeleton(cell);
+                        enableSkeleton(cell, false); // Standard cell skeleton
+                    }
+                    // Priority 2: Generic Page Loader (e.g. Profile, Notifications, Home initial load)
+                    else {
+                        const primaryCol = progressBar.closest('[data-testid="primaryColumn"]');
+                        if (primaryCol) {
+                            // Only create overlay if one doesn't exist already
+                            if (!primaryCol.querySelector('.x-generic-skeleton-overlay')) {
+                                createGenericSkeletonOverlay(primaryCol, progressBar);
+                            }
+                        }
                     }
                 }
                 else if (testId === 'tweet' || (node.querySelector && node.querySelector('[data-testid="tweet"]'))) {
                     const tweetNode = testId === 'tweet' ? node : node.querySelector('[data-testid="tweet"]');
                     if (tweetNode) {
                         tweetNode.classList.add('x-fade-in');
-                        // Clean up parent skeleton if it exists
-                        const parentCell = tweetNode.closest('div[data-testid="cellInnerDiv"]');
-                        if (parentCell) {
-                            disableSkeleton(parentCell);
+
+                        // Clean up parent skeleton if it exists (standard case)
+                        const parentSkeleton = tweetNode.closest('.x-skeleton-container');
+                        if (parentSkeleton) {
+                            disableSkeleton(parentSkeleton);
+                        }
+
+                        // NEW: Aggressive cleanup for Home Timeline
+                        // If *any* tweet loads, we assume the initial page load is finished.
+                        // Find and remove any "generic" skeleton containers (not cell-specific) in the main column.
+                        const primaryCol = tweetNode.closest('[data-testid="primaryColumn"]');
+                        if (primaryCol) {
+                            removeGenericSkeletonOverlay(primaryCol);
                         }
                     }
                 }
@@ -690,7 +717,7 @@ const animObserver = new MutationObserver((mutations) => {
     }
 });
 
-function enableSkeleton(cell) {
+function enableSkeleton(cell, isGeneric = false) {
     if (cell.classList.contains('x-skeleton-container')) return;
 
     // Strict safety check: Disable on status pages to prevent React conflicts
@@ -713,6 +740,13 @@ function enableSkeleton(cell) {
     }
 
     cell.appendChild(wrapper);
+
+    // NEW: Timer-based auto-cleanup for generic skeletons (safety net)
+    if (isGeneric) {
+        setTimeout(() => {
+            disableSkeleton(cell);
+        }, 5000); // Auto-cleanup after 5 seconds
+    }
 }
 
 function disableSkeleton(cell) {
@@ -720,6 +754,60 @@ function disableSkeleton(cell) {
         cell.classList.remove('x-skeleton-container');
         const wrapper = cell.querySelector('.x-skeleton-wrapper');
         if (wrapper) wrapper.remove();
+    }
+}
+
+// NEW: Generic Skeleton Overlay Functions (for initial page loaders)
+function createGenericSkeletonOverlay(primaryCol, progressBar) {
+    // Create an overlay that covers the loading area
+    const overlay = document.createElement('div');
+    overlay.className = 'x-generic-skeleton-overlay';
+    overlay.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        min-height: 100vh;
+        background: rgb(0, 0, 0);
+        z-index: 10;
+    `;
+
+    // Create skeleton cards inside
+    const wrapper = document.createElement('div');
+    wrapper.className = 'x-skeleton-wrapper';
+    for (let i = 0; i < 40; i++) {
+        const card = document.createElement('div');
+        card.className = 'x-skeleton-card';
+        const height = Math.floor(Math.random() * (600 - 200 + 1)) + 200;
+        card.style.height = `${height}px`;
+        wrapper.appendChild(card);
+    }
+    overlay.appendChild(wrapper);
+
+    // Insert overlay after the spinner's container to cover the loading area
+    const spinnerContainer = progressBar.parentElement;
+    if (spinnerContainer && spinnerContainer.parentElement) {
+        spinnerContainer.parentElement.style.position = 'relative';
+        spinnerContainer.parentElement.appendChild(overlay);
+    }
+
+    // Watch for spinner removal to clean up overlay
+    const observer = new MutationObserver((mutations) => {
+        // Check if progressbar is still in the DOM
+        if (!document.body.contains(progressBar)) {
+            removeGenericSkeletonOverlay(primaryCol);
+            observer.disconnect();
+        }
+    });
+    observer.observe(spinnerContainer.parentElement || primaryCol, { childList: true, subtree: true });
+}
+
+function removeGenericSkeletonOverlay(primaryCol) {
+    const overlay = primaryCol.querySelector('.x-generic-skeleton-overlay');
+    if (overlay) {
+        overlay.style.transition = 'opacity 0.3s ease';
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.remove(), 300);
     }
 }
 
