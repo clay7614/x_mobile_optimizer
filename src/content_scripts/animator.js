@@ -419,7 +419,8 @@ function onTouchEnd(e) {
 
     if (isDraggingY) {
         // Close if dragged far enough OR flicked fast enough
-        if (Math.abs(deltaY) > 80 || (velocityY > 0.5 && Math.abs(deltaY) > 40)) {
+        // Increased min distance for flick to 60px to prevent jitter triggers
+        if (Math.abs(deltaY) > 80 || (velocityY > 0.5 && Math.abs(deltaY) > 60)) {
             closeLightbox(false);
         } else {
             // Revert properties
@@ -442,8 +443,9 @@ function onTouchEnd(e) {
     else if (isDraggingX) {
         const threshold = 50;
         // Navigate if dragged past threshold OR flicked fast
-        const isNext = (deltaX < -threshold) || (velocityX > 0.5 && deltaX < -30);
-        const isPrev = (deltaX > threshold) || (velocityX > 0.5 && deltaX > 30);
+        // Increased min flick distance to 50px to avoid accidental triggers on short swipes
+        const isNext = (deltaX < -threshold) || (velocityX > 0.5 && deltaX < -50);
+        const isPrev = (deltaX > threshold) || (velocityX > 0.5 && deltaX > 50);
 
         if (isNext && currentImageIndex < imageList.length - 1) {
             currentImageIndex++;
