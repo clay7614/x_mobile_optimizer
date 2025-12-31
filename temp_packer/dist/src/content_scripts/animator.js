@@ -49,8 +49,15 @@ function injectAnimationStyles() {
     .x-skeleton-loading {
         position: relative;
         display: block;
-        min-height: var(--x-skeleton-height, 150px);
-        contain: layout style; 
+        min-height: var(--x-skeleton-height, 400px);
+        contain: layout style;
+        pointer-events: none;
+    }
+
+    /* Hide the original spinner */
+    .x-skeleton-loading [role="progressbar"] {
+        opacity: 0 !important;
+        visibility: hidden !important;
     }
 
     .x-skeleton-loading::after {
@@ -60,7 +67,12 @@ function injectAnimationStyles() {
         z-index: 10;
         background: 
             linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent),
-            repeating-linear-gradient(180deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 119px, transparent 119px, transparent 120px);
+            repeating-linear-gradient(180deg, 
+                rgba(255,255,255,0.02) 0px, 
+                rgba(255,255,255,0.02) 150px, 
+                transparent 150px, 
+                transparent 162px
+            );
         background-size: 200% 100%, 100% 100%;
         animation: x-shimmer 1.5s infinite;
         pointer-events: none;
@@ -96,8 +108,8 @@ function injectAnimationStyles() {
     }
     
     .x-modal-zoom {
-        animation: x-modal-zoom-anim 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-        transform-origin: center;
+        /* Only animate opacity to avoid breaking X's centering transforms */
+        animation: x-modal-zoom-anim 0.2s ease-out forwards;
     }
 
     @keyframes x-zoom-in-anim {
@@ -106,12 +118,13 @@ function injectAnimationStyles() {
     }
 
     @keyframes x-modal-zoom-anim {
-        from { transform: scale(0.92); opacity: 0; }
-        to { transform: scale(1); opacity: 1; }
+        from { opacity: 0; }
+        to { opacity: 1; }
     }
 
     /* Custom Lightbox */
     .x-lightbox {
+
         position: fixed;
         top: 0;
         left: 0;
@@ -523,6 +536,18 @@ const animObserver = new MutationObserver((mutations) => {
                         if (content) content.classList.add('x-fade-in');
                     }
                 }
+                // NEW: Detect when a tweet is directly added (e.g. replacing skeleton)
+                else if (testId === 'tweet' || (node.querySelector && node.querySelector('[data-testid="tweet"]'))) {
+                    const tweetNode = testId === 'tweet' ? node : node.querySelector('[data-testid="tweet"]');
+                    if (tweetNode) {
+                        tweetNode.classList.add('x-fade-in');
+                        // Clean up parent skeleton if it exists
+                        const parentCell = tweetNode.closest('div[data-testid="cellInnerDiv"]');
+                        if (parentCell) {
+                            disableSkeleton(parentCell);
+                        }
+                    }
+                }
             }
         }
     }
@@ -533,8 +558,8 @@ function enableSkeleton(cell) {
     if (cell.querySelector('[data-testid="tweet"]')) return;
 
     cell.classList.add('x-skeleton-loading');
-    const height = Math.floor(Math.random() * (400 - 150 + 1)) + 150;
-    cell.style.setProperty('--x-skeleton-height', `${height}px`);
+    // Force large height to show multiple cards
+    cell.style.setProperty('--x-skeleton-height', '400px');
 }
 
 function disableSkeleton(cell) {
