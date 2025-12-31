@@ -158,12 +158,18 @@ const animObserver = new MutationObserver((mutations) => {
                         // This is a loader cell. Convert to skeleton.
                         enableSkeleton(node);
                     } else {
-                        // Normal content
+                        // Normal content: Ensure skeleton cleanup in case of reuse
+                        disableSkeleton(node);
+
                         const content = node.firstElementChild;
                         if (content) content.classList.add('x-fade-in');
                     }
                 }
                 else if (['tweet', 'notification', 'UserCell'].includes(testId)) {
+                    // Cleanup parent if needed
+                    const cell = node.closest('[data-testid="cellInnerDiv"]');
+                    if (cell) disableSkeleton(cell);
+
                     node.classList.add('x-fade-in');
                 }
 
@@ -186,23 +192,27 @@ function enableSkeleton(cell) {
     cell.classList.add('x-skeleton-valid');
     cell.classList.add('x-skeleton-container');
 
-    // Add dummy cards
-    // We append specific internal structure to simulate cards
-    // Note: manipulating innerHTML of a React-managed node is risky.
-    // Instead, we use pseudo-elements or a separate overlay container if possible.
-    // Here we append a safe container that shouldn't break React if X only manages the progressbar inside.
-
     const skeletonWrapper = document.createElement('div');
     skeletonWrapper.className = 'x-skeleton-wrapper';
     skeletonWrapper.style.width = '100%';
 
-    for (let i = 0; i < 5; i++) {
+    // Increased count to allow more scroll
+    for (let i = 0; i < 12; i++) {
         const card = document.createElement('div');
         card.className = 'x-skeleton-card';
         skeletonWrapper.appendChild(card);
     }
 
     cell.appendChild(skeletonWrapper);
+}
+
+function disableSkeleton(cell) {
+    if (cell.classList.contains('x-skeleton-valid')) {
+        cell.classList.remove('x-skeleton-valid');
+        cell.classList.remove('x-skeleton-container');
+        const wrapper = cell.querySelector('.x-skeleton-wrapper');
+        if (wrapper) wrapper.remove();
+    }
 }
 
 
