@@ -48,16 +48,18 @@ const animObserver = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
             if (node.nodeType === 1) {
-                // Target the inner tweet content, NOT the container cell
-                // This avoids interfering with the Virtual Scroll's positioning of the cell
+                // Target content inside virtual scroll cells
+                // This covers Tweets, Notifications, Users in lists, etc.
                 if (node.getAttribute('data-testid') === 'cellInnerDiv') {
-                    const tweetContent = node.querySelector('[data-testid="tweet"]');
-                    if (tweetContent) {
-                        tweetContent.classList.add('x-fade-in');
+                    // Apply to the first direct child which acts as the content container
+                    // This avoids animating the cellInnerDiv itself which causes layout issues
+                    const content = node.firstElementChild;
+                    if (content) {
+                        content.classList.add('x-fade-in');
                     }
                 }
-                // If the node itself is the tweet (rare in this insertion pattern but possible)
-                else if (node.getAttribute('data-testid') === 'tweet') {
+                // Falback: If the node is injected as these specific types directly
+                else if (['tweet', 'notification', 'UserCell'].includes(node.getAttribute('data-testid'))) {
                     node.classList.add('x-fade-in');
                 }
             }
