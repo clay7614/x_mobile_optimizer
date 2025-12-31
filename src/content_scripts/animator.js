@@ -45,42 +45,50 @@ function injectAnimationStyles() {
         transition: transform 0.2s ease-out;
     }
 
-    /* Skeleton Loading - CSS Only approach */
-    .x-skeleton-loading {
+    /* DOM-based Skeleton Loading (Restored) */
+    .x-skeleton-container {
         position: relative;
-        display: block;
-        min-height: 60px; /* Fallback small height to avoid collapse, but small enough to avoid massive overlap */
-        contain: layout style;
-        /* pointer-events: none; REMOVED to allow scrolling */
+        overflow: hidden;
+    }
+    
+    .x-skeleton-wrapper {
+        width: 100%;
+        /* Ensure it sits above any residual content */
+        z-index: 10;
+        /* Ensure it covers the spinner */
+        position: relative; 
+        background-color: rgb(0, 0, 0); /* Match theme background to cover spinner */
     }
 
-    /* Hide the original spinner but keep its layout space */
-    .x-skeleton-loading [role="progressbar"] {
+    /* Important: Hide the original spinner when skeleton is active */
+    .x-skeleton-container [role="progressbar"] {
         opacity: 0 !important;
-        visibility: hidden !important; /* Maintains layout space */
+        visibility: hidden !important;
     }
 
-    .x-skeleton-loading::after {
+    .x-skeleton-card {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.05);
+        margin-bottom: 2px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .x-skeleton-card::after {
         content: "";
         position: absolute;
-        inset: 0;
-        z-index: 10;
-        background: 
-            linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent),
-            repeating-linear-gradient(180deg, 
-                rgba(255,255,255,0.02) 0px, 
-                rgba(255,255,255,0.02) 150px, 
-                transparent 150px, 
-                transparent 162px
-            );
-        background-size: 200% 100%, 100% 100%;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+        background-size: 200% 100%;
         animation: x-shimmer 1.5s infinite;
-        pointer-events: none;
     }
 
     @keyframes x-shimmer {
-        0% { background-position: -200% 0, 0 0; }
-        100% { background-position: 200% 0, 0 0; }
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
     }
 
     /* Navigation Animations */
@@ -124,7 +132,6 @@ function injectAnimationStyles() {
 
     /* Custom Lightbox */
     .x-lightbox {
-
         position: fixed;
         top: 0;
         left: 0;
@@ -536,7 +543,14 @@ const animObserver = new MutationObserver((mutations) => {
                         if (content) content.classList.add('x-fade-in');
                     }
                 }
-                // NEW: Detect when a tweet is directly added (e.g. replacing skeleton)
+                // NEW: Catch cases where spinner is added LATER into an existing cell
+                else if (role === 'progressbar' || (node.querySelector && node.querySelector('[role="progressbar"]'))) {
+                    const progressBar = role === 'progressbar' ? node : node.querySelector('[role="progressbar"]');
+                    const cell = progressBar.closest('[data-testid="cellInnerDiv"]');
+                    if (cell) {
+                        enableSkeleton(cell);
+                    }
+                }
                 else if (testId === 'tweet' || (node.querySelector && node.querySelector('[data-testid="tweet"]'))) {
                     const tweetNode = testId === 'tweet' ? node : node.querySelector('[data-testid="tweet"]');
                     if (tweetNode) {
@@ -554,20 +568,35 @@ const animObserver = new MutationObserver((mutations) => {
 });
 
 function enableSkeleton(cell) {
-    if (cell.classList.contains('x-skeleton-loading')) return;
+    if (cell.classList.contains('x-skeleton-container')) return;
+
+    // Strict safety check: Disable on status pages to prevent React conflicts
+    if (window.location.pathname.includes('/status/')) return;
+
     if (cell.querySelector('[data-testid="tweet"]')) return;
 
-    cell.classList.add('x-skeleton-loading');
-    // Remove forced height to prevent layout overlaps in virtual list
-    cell.style.removeProperty('--x-skeleton-height');
+    cell.classList.add('x-skeleton-container');
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'x-skeleton-wrapper';
+
+    // Create random cards to simulate feed
+    for (let i = 0; i < 40; i++) {
+        const card = document.createElement('div');
+        card.className = 'x-skeleton-card';
+        const height = Math.floor(Math.random() * (600 - 200 + 1)) + 200;
+        card.style.height = `${height}px`;
+        wrapper.appendChild(card);
+    }
+
+    cell.appendChild(wrapper);
 }
 
 function disableSkeleton(cell) {
-    if (cell.classList.contains('x-skeleton-loading')) {
-        cell.classList.remove('x-skeleton-loading');
-        cell.style.removeProperty('--x-skeleton-height');
-        cell.style.height = 'auto';
-        cell.style.minHeight = '0px';
+    if (cell.classList.contains('x-skeleton-container')) {
+        cell.classList.remove('x-skeleton-container');
+        const wrapper = cell.querySelector('.x-skeleton-wrapper');
+        if (wrapper) wrapper.remove();
     }
 }
 
