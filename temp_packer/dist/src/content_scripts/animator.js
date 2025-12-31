@@ -159,6 +159,7 @@ function injectAnimationStyles() {
 }
 
 let isBackNavigation = false;
+let isProgrammaticBack = false;
 let backNavTimeout;
 
 function triggerBackNav() {
@@ -389,22 +390,22 @@ function onTouchEnd(e) {
 function closeLightbox(fromHistory = false) {
     if (!activeLightbox) return;
 
-    if (!fromHistory) {
-        history.back();
-        return;
-    }
+    // Animate out immediately to avoid lag
+    const targetLightbox = activeLightbox;
 
-    activeLightbox.classList.remove('active');
-    activeLightbox.style.pointerEvents = 'none';
+    // Allow background interaction
+    targetLightbox.classList.remove('active');
+    targetLightbox.style.pointerEvents = 'none';
 
     if (lightboxTrack && lightboxTrack.children[currentImageIndex]) {
         const slide = lightboxTrack.children[currentImageIndex];
         const originalItem = imageList[currentImageIndex];
 
-        let targetTransform = 'scale(0.8)';
+        let targetTransform = 'scale(0.8)'; // Fallback
 
         if (originalItem && originalItem.element) {
             const rect = originalItem.element.getBoundingClientRect();
+            // Check if roughly on screen/valid
             if (rect.width > 0 && rect.height > 0 && rect.top > -window.innerHeight && rect.top < window.innerHeight * 2) {
                 const centerX = window.innerWidth / 2;
                 const centerY = window.innerHeight / 2;
@@ -412,28 +413,41 @@ function closeLightbox(fromHistory = false) {
                 const origCenterY = rect.top + rect.height / 2;
                 const moveX = origCenterX - centerX;
                 const moveY = origCenterY - centerY;
+                // Approximation scale
                 const scale = Math.max(0.1, rect.width / window.innerWidth);
 
                 targetTransform = `translate(${moveX}px, ${moveY}px) scale(${scale})`;
             }
         }
 
-        slide.style.transition = 'transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s ease';
+        // Apply smooth exit
+        slide.style.transition = 'transform 1s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 1s ease';
         slide.style.transform = targetTransform;
         slide.style.opacity = '0';
     }
 
-    const targetLightbox = activeLightbox;
+    // Reset state immediately
     activeLightbox = null;
     lightboxTrack = null;
 
+    // Manage History behind the scenes if this wasn't called by history nav
+    if (!fromHistory) {
+        isProgrammaticBack = true;
+        history.back();
+    }
+
     setTimeout(() => {
         if (targetLightbox) targetLightbox.remove();
-    }, 500);
+    }, 1000);
 }
 
 function attachInteractionListeners() {
     window.addEventListener('popstate', (e) => {
+        if (isProgrammaticBack) {
+            isProgrammaticBack = false;
+            return;
+        }
+
         if (activeLightbox) {
             closeLightbox(true);
             return;
