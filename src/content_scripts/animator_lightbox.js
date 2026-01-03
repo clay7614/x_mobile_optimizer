@@ -340,7 +340,8 @@ function onTouchMove(e) {
 
     if (isDraggingY) {
         const scale = Math.max(0.6, 1 - Math.abs(deltaY) / 1000);
-        const currentTrackX = -(currentImageIndex * window.innerWidth);
+        // Positive direction because track is row-reversed (consistent with X-drag)
+        const currentTrackX = currentImageIndex * window.innerWidth;
 
         lightboxTrack.style.transform = `translateX(${currentTrackX}px)`;
 
