@@ -1,4 +1,4 @@
-# X Mobile Optimizer (for Microsoft Edge Canary)
+# X Mobile Optimizer
 
 Android上のWeb版X (旧Twitter) を、アプリに近い操作感で利用するための拡張機能です。
 
