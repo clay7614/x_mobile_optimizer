@@ -1,6 +1,6 @@
 # X Mobile Optimizer
 
-Android上のWeb版X (旧Twitter) を、アプリに近い操作感で利用するための拡張機能です。
+AAndroiタブレット上のWeb版X((旧Twitte)) を、アプリに近い操作感で利用するための拡張機能です
 
 ## 主な機能
 
@@ -29,6 +29,7 @@ Android上のWeb版X (旧Twitter) を、アプリに近い操作感で利用す�
     *   Google Playストア等から「Microsoft Edge Canary」をインストールします。
      *   [Releases](https://github.com/clay7614/x_mobile_optimizer/releases/latest)から`x_mobile_optimizer.crx`をダウンロードします。
 
+
 2.  **開発者オプションの有効化**
     *   Edge Canaryの設定を開き、「Microsoft Edgeについて」へ進みます。
     *   下部に表示されているバージョン番号（例: `Edge Canary 1xx.x.xxxx.x`）を5回連続でタップします。
@@ -42,4 +43,4 @@ Android上のWeb版X (旧Twitter) を、アプリに近い操作感で利用す�
 
 ## 注意事項
 
-本拡張機能は開発初期段階のため、予期しない動作や不具合が発生する可能性があります。
+本拡張機能は開発初期段階のため、予期しない動作や不具合が発生する可能性があります
