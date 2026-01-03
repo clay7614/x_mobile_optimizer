@@ -18,8 +18,13 @@
         "*://x.com/*",
         "*://mobile.twitter.com/*"
       ],
+      "css": [
+        "src/content_scripts/animator.css"
+      ],
       "js": [
         "src/content_scripts/optimizer.js",
+        "src/content_scripts/animator_lightbox.js",
+        "src/content_scripts/animator_fullscreen.js",
         "src/content_scripts/animator.js"
       ],
       "run_at": "document_end"

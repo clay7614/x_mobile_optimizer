@@ -1,0 +1,442 @@
+/* Fade In Effect */
+.x-fade-in {
+    animation: x-fade-in-anim 0.4s ease-out forwards;
+    opacity: 0;
+}
+
+@keyframes x-fade-in-anim {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Press Scale Effect */
+.x-press-active {
+    transform: scale(0.97);
+    transition: transform 0.1s ease-out;
+}
+
+.x-press-target {
+    transition: transform 0.2s ease-out;
+}
+
+@keyframes x-shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* Home Timeline CSS Pattern Skeleton (Refined for Consistency) */
+.x-loading-home [data-testid="primaryColumn"] {
+    position: relative !important;
+}
+
+.x-loading-home [data-testid="primaryColumn"]::before {
+    content: "";
+    position: absolute;
+    top: 230px;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background-color: #000;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.x-loading-home [data-testid="primaryColumn"]::after {
+    content: "";
+    position: absolute;
+    top: 240px;
+    left: 13px;
+    right: 13px;
+    height: 100vh;
+    z-index: 1001;
+    background-image:
+        linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.03) 25%,
+            rgba(255, 255, 255, 0.08) 50%,
+            rgba(255, 255, 255, 0.03) 75%,
+            transparent),
+        repeating-linear-gradient(to bottom,
+            rgba(255, 255, 255, 0.05) 0px,
+            rgba(255, 255, 255, 0.05) 200px,
+            transparent 200px,
+            transparent 202px
+            /* 2px gap matching legacy margin-bottom */
+        );
+    background-size: 200% 100%, 100% 202px;
+    animation: x-home-shimmer 1.5s infinite linear;
+    /* 1.5s matching x-shimmer */
+    mask-image: linear-gradient(to bottom, black 0%, black 80%, transparent 100%);
+}
+
+@keyframes x-home-shimmer {
+    0% {
+        background-position: -200% 0, 0 0;
+    }
+
+    100% {
+        background-position: 200% 0, 0 0;
+    }
+}
+
+/* CSS-Only Skeleton Cell for /home Infinite Scroll */
+.x-skeleton-cell {
+    position: relative;
+    min-height: 200px;
+    background: rgba(255, 255, 255, 0.05) !important;
+    overflow: hidden;
+}
+
+.x-skeleton-cell::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+    background-size: 200% 100%;
+    animation: x-shimmer 1.5s infinite;
+}
+
+.x-skeleton-cell [role="progressbar"] {
+    opacity: 0 !important;
+}
+
+/* Hide individual skeletons and spinners when home loading is active */
+.x-loading-home [role="progressbar"],
+.x-loading-home .x-skeleton-container {
+    display: none !important;
+}
+
+/* Hide spinner on /home timeline - will be replaced by skeleton background */
+body.x-home-page [data-testid="cellInnerDiv"] [role="progressbar"] {
+    opacity: 0 !important;
+}
+
+/* CSS Skeleton background for loading cells (all pages) */
+[data-testid="cellInnerDiv"].x-skeleton-cell {
+    position: relative;
+    min-height: 6000px;
+    overflow: hidden;
+    background: #000 !important;
+}
+
+[data-testid="cellInnerDiv"].x-skeleton-cell [role="progressbar"] {
+    opacity: 0 !important;
+}
+
+[data-testid="cellInnerDiv"].x-skeleton-cell::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image:
+        linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.03) 25%,
+            rgba(255, 255, 255, 0.08) 50%,
+            rgba(255, 255, 255, 0.03) 75%,
+            transparent),
+        repeating-linear-gradient(to bottom,
+            rgba(255, 255, 255, 0.05) 0px,
+            rgba(255, 255, 255, 0.05) 200px,
+            transparent 200px,
+            transparent 202px);
+    background-size: 200% 100%, 100% 202px;
+    animation: x-shimmer 1.5s infinite;
+}
+
+/* Fullscreen Toggle Button */
+.x-fullscreen-btn {
+    position: fixed;
+    bottom: 80px;
+    right: 15px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(29, 155, 240, 0.9);
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 99998;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    opacity: 0.7;
+}
+
+.x-fullscreen-btn:hover,
+.x-fullscreen-btn:active {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.x-fullscreen-btn svg {
+    width: 24px;
+    height: 24px;
+    fill: white;
+}
+
+/* Hide button in fullscreen mode */
+:fullscreen .x-fullscreen-btn,
+:-webkit-full-screen .x-fullscreen-btn {
+    display: none;
+}
+
+
+/* Modal & Image Zoom Animations */
+.x-zoom-in {
+    animation: x-zoom-in-anim 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    transform-origin: center;
+}
+
+.x-modal-zoom {
+    /* Only animate opacity to avoid breaking X's centering transforms */
+    animation: x-modal-zoom-anim 0.2s ease-out forwards;
+}
+
+@keyframes x-zoom-in-anim {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes x-modal-zoom-anim {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Custom Lightbox */
+.x-lightbox {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 1);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+    touch-action: none;
+}
+
+.x-lightbox.active {
+    opacity: 1;
+}
+
+.x-lightbox-track {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    will-change: transform;
+}
+
+.x-lightbox-img-wrapper {
+    width: 100vw;
+    height: 100vh;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.x-lightbox-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    width: auto;
+    height: auto;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+/* Lightbox Controls */
+.x-lightbox-controls {
+    position: fixed;
+    bottom: 30px;
+    right: 20px;
+    z-index: 100001;
+    display: flex;
+    gap: 15px;
+}
+
+.x-spread-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    transition: all 0.2s ease;
+}
+
+.x-spread-btn.active {
+    background: rgba(29, 155, 240, 0.9);
+    border-color: rgba(29, 155, 240, 1);
+}
+
+.x-spread-btn svg {
+    width: 24px;
+    height: 24px;
+    fill: white;
+}
+
+/* Interaction Actions Bar */
+.x-lightbox-actions {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 15px 0 30px;
+    /* Extra padding for bottom safe area */
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 100000;
+    pointer-events: auto;
+}
+
+.x-action-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 16px;
+    min-width: 48px;
+    min-height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.x-action-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+
+.x-action-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+/* Action States */
+.x-action-btn.liked {
+    color: rgb(249, 24, 128);
+}
+
+.x-action-btn.retweeted {
+    color: rgb(0, 186, 124);
+}
+
+.x-action-btn.bookmarked {
+    color: rgb(29, 155, 240);
+}
+
+/* Pressed animation */
+.x-action-btn.pressed {
+    animation: btnPop 0.2s ease-out;
+}
+
+@keyframes btnPop {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.3);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Auto-hide transition */
+.x-lightbox-actions,
+.x-lightbox-controls {
+    transition: opacity 0.3s ease;
+}
+
+.x-lightbox-actions.hidden,
+.x-lightbox-controls.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Move Spread button up to avoid conflict */
+.x-lightbox-controls {
+    bottom: 80px;
+}
+
+/* Spread Layout (Manga Mode) */
+.x-lightbox-img-wrapper.spread {
+    flex-direction: row-reverse;
+    /* Japanese Manga Style (Right-to-Left) */
+    gap: 0;
+}
+
+.x-lightbox-img-wrapper.spread .x-lightbox-img {
+    max-width: 50vw;
+    /* Fit two images */
+    width: 50vw;
+    /* Force width to ensure pairing */
+    object-fit: contain;
+}
+
+/* Visual Right Image (DOM #1 in row-reverse) */
+.x-lightbox-img-wrapper.spread .x-lightbox-img:first-child:not(.single) {
+    object-position: left;
+    /* Align to spine (visual left) */
+}
+
+/* Visual Left Image (DOM #2 in row-reverse) */
+.x-lightbox-img-wrapper.spread .x-lightbox-img:last-child:not(.single) {
+    object-position: right;
+    /* Align to spine (visual right) */
+}
+
+.x-lightbox-img-wrapper.spread .x-lightbox-img.single {
+    max-width: 100%;
+    width: auto;
+}
