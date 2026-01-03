@@ -22,7 +22,7 @@ Android上のWeb版X (旧Twitter) を、アプリに近い操作感で利用す�
 
 ## 推奨環境
 
-* **Microsoft Edge Canary** (Android版)  
+* **Microsoft Edge Canary**  
 本拡張機能は、このブラウザでの動作を前提に設計されています。
 
 ## インストール方法
