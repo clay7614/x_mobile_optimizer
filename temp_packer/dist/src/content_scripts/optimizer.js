@@ -7,29 +7,10 @@ console.log('X Mobile Optimizer: Loaded');
 
 // Configuration
 const CONFIG = {
-    removeAds: false, // Handled by another extension
-    removeSidebar: false, // Handled by another extension
     optimizeMedia: true,
     debug: false
 };
 
-// Selectors
-const SELECTORS = {
-    // Common ad indicators
-    adPlacement: '[data-testid="placementTracking"]',
-    // Specific text indicators often found in ads (Promoted, etc)
-    promotedLabel: 'span:contains("Promoted")', // Helper needed for :contains
-
-    // Sidebar elements
-    sidebarColumn: '[data-testid="sidebarColumn"]',
-    trending: '[data-testid="trend"]',
-    whoToFollow: '[data-testid="UserCell"]', // Be careful with this one
-
-    // Navigation distractions
-    grokButton: '[aria-label="Grok"]',
-    verifiedOrg: '[aria-label="Verified Organizations"]',
-    premiumEntry: '[aria-label="Premium"]',
-};
 
 // Initialize
 function initOptimizer() {
@@ -81,10 +62,7 @@ function startObservation() {
 }
 
 function cleanup() {
-    if (CONFIG.removeAds) removeAds();
-    if (CONFIG.removeSidebar) removeSidebar();
     if (CONFIG.optimizeMedia) {
-        optimizeMedia();
         optimizeRendering(); // New rendering optimizations
     }
 }
@@ -111,47 +89,9 @@ function injectResourceHints() {
 // Inject hints immediately
 injectResourceHints();
 
-// --- Optimization Logic ---
-
-function removeAds() {
-    // 1. Data-testid based removal
-    const ads = document.querySelectorAll(SELECTORS.adPlacement);
-    ads.forEach(ad => {
-        const tweetCell = ad.closest('[data-testid="cellInnerDiv"]');
-        if (tweetCell && tweetCell.dataset.xmoHidden !== 'true') {
-            // Use opacity and height management instead of simple display:none
-            // to avoid breaking X's virtual scroll calculations
-            tweetCell.style.opacity = '0';
-            tweetCell.style.pointerEvents = 'none';
-            tweetCell.style.height = '0.01px'; // Minimum height to prevent collapse overlap
-            tweetCell.dataset.xmoHidden = 'true';
-            log('Removed ad safely');
-        }
-    });
-}
-
-
-function removeSidebar() {
-    // On mobile, the sidebar is usually hidden or different.
-    // This targets desktop/tablet views mainly.
-    const sidebar = document.querySelector(SELECTORS.sidebarColumn);
-    if (sidebar && sidebar.style.display !== 'none') {
-        sidebar.style.display = 'none';
-        log('Hidden Sidebar');
-    }
-
-    // Hide extraneous nav items on mobile drawer or bottom bar if accessible
-    // Nav items usually have aria-labels
-    const unwantedNavs = [SELECTORS.grokButton, SELECTORS.verifiedOrg];
-    unwantedNavs.forEach(selector => {
-        const el = document.querySelector(selector);
-        if (el && el.style.display !== 'none') {
-            el.style.display = 'none';
-        }
-    });
-}
-
-
+// Optimization Logic
+// Ads and Sidebar removal are handled by other extensions or user preference.
+// This script focuses purely on performance optimizations.
 
 function optimizeRendering() {
     // 1. Content Visibility for Timeline Cells

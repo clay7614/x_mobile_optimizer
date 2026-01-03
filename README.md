@@ -1,47 +1,41 @@
-# X Mobile Optimizer for Android
+# X Mobile Optimizer (for Microsoft Edge Canary)
 
-Androidブラウザ（Kiwi Browser, Lemur Browser等）向けの、Web版X（旧Twitter）最適化拡張機能です。
-広告の非表示やサイドバーの削除による高速化と、リップルエフェクトなどのアニメーション追加によるUX向上を実現します。
+Microsoft Edge Canary (Android) 上の X (旧Twitter) を、ネイティブアプリのような操作感で快適に利用するための拡張機能です。
 
-## 機能概要
+## 主な機能
 
-### Speed Mode (高速化)
-タイムラインの表示を高速化し、不要な要素を削除します。
-- **広告除去**: プロモーションツイートを非表示にします。
-- **サイドバー非表示**: デスクトップ表示時のトレンドなどのサイドバーを削除します。
-- **不要なナビゲーションの整理**: GrokやPremiumなどのボタンを整理します。
+### アニメーションを改善
+*   画面遷移やボタン操作，画像表示，タイムラインなどにアニメーションを追加。
+*   タップ時にエフェクトを表示。
 
-### Motion Mode (アニメーション)
-ネイティブアプリのような操作感を追加します。
-- **リップルエフェクト**: タップ時に波紋アニメーションを表示します。
-- **フェードイン**: 新しいツイートが読み込まれる際にふわっと表示します。
+### 画像ビューワ
+*   右スワイプで次の画像、左スワイプで前の画像へ移動できます。
+*   画面の左右端をタップすることでも、画像の切り替えが可能です。
+*   マンガなどを読むのに最適な、2枚の画像を見開きで表示するモードを搭載しています。
+
+### 読み込み最適化
+
+---
+
+## 推奨環境
+
+*   **Microsoft Edge Canary** (Android版)
+    *   本拡張機能は、このブラウザでの動作を前提に設計されています。
 
 ## インストール方法
 
-1. **拡張機能対応ブラウザの準備**:
-   Android端末に [Kiwi Browser](https://play.google.com/store/apps/details?id=com.kiwibrowser.browser) または [Lemur Browser](https://play.google.com/store/apps/details?id=com.lemurbrowser.exts) をインストールします。
+Microsoft Edge Canaryへのインストール手順は以下の通りです。
 
-2. **拡張機能の読み込み**:
-   - ビルド済みの `.zip` ファイルまたは `.crx` ファイルを端末に保存します。
-   - ブラウザのメニューから「拡張機能 (Extensions)」を開きます。
-   - 「デベロッパーモード (Developer mode)」をオンにします。
-   - 「+(from .zip/.crx/.user.js)」ボタンをタップし、保存したファイルを選択します。
+1.  **アプリインストール**
+    *   Google Playストア等から「Microsoft Edge Canary」をインストールします。
 
-3. **設定**:
-   - ブラウザのメニューから「X Mobile Optimizer」を選択（または拡張機能アイコンをタップ）して設定画面を開きます。
-   - Speed Mode, Motion Modeをお好みで切り替えてください。
+2.  **開発者オプションの有効化**
+    *   Edge Canaryの設定を開き、「Microsoft Edgeについて」へ進みます。
+    *   下部に表示されているバージョン番号（例: `Edge Canary 1xx.x.xxxx.x`）を5回連続でタップします。
+    *   「開発者向けオプションが有効になりました」等の表示が出ればOKです。
 
-## 開発者向け情報
-
-### ビルド
-ソースコードをZIPに圧縮するだけでパッケージング可能です。
-
-### ディレクトリ構成
-- `manifest.json`: 拡張機能の設定ファイル (Manifest V3)
-- `src/content_scripts`: ページ上で動作するスクリプト
-    - `optimizer.js`: 高速化ロジック
-    - `animator.js`: アニメーションロジック
-- `src/popup`: 設定画面のUI
-
----
-Designed for Android Power Users.
+3.  **拡張機能のインストール**
+    *   設定メニューに戻り、新たに追加された「開発者向けオプション」を開きます。
+    *   「Extension install by crx」をタップします。
+    *   「Choose .crx file」をタップし、あらかじめ端末に保存しておいた本拡張機能のファイル（`x_mobile_optimizer.crx`）を選択して「OK」を押します。
+    *   「X Mobile Optimizerを追加しますか？」という確認ウィンドウが表示されるので、「追加」を押してください。

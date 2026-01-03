@@ -1,115 +1,85 @@
-/* Global Styles */
 :root {
-  --primary-color: #1d9bf0;
-  --bg-color: #0f1419;
-  --card-bg: #1e2732;
-  --text-main: #f7f9f9;
-  --text-sub: #8b98a5;
-  --border-radius: 16px;
-  --transition: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  --bg-color: #191c21;
+  /* Slightly lighter dark for background */
+  --item-bg: #1e2025;
+  --text-color: #e7e9ea;
+  --accent-color: #1d9bf0;
+  --border-color: #2f3336;
+  --secondary-text: #71767b;
 }
 
 body {
-  width: 320px;
+  width: 100%;
+  /* Full width availability */
+  min-width: 320px;
+  /* Ensure reasonable size on PC if opened */
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   margin: 0;
   padding: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background-color: var(--bg-color);
-  color: var(--text-main);
-  box-sizing: border-box;
+  user-select: none;
 }
 
 .container {
-  padding: 20px;
-}
-
-/* Header */
-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
+  flex-direction: column;
 }
 
-h1 {
-  font-size: 20px;
+header {
+  padding: 16px;
+  background-color: var(--bg-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+header h1 {
+  font-size: 16px;
   font-weight: 700;
   margin: 0;
-  background: linear-gradient(45deg, #1d9bf0, #8e44ad);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  text-align: center;
 }
 
-.badge {
-  font-size: 11px;
-  background-color: rgba(29, 155, 240, 0.1);
-  color: var(--primary-color);
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-weight: 600;
+main {
+  padding: 0;
 }
 
-/* Cards */
-.card {
-  background-color: var(--card-bg);
-  border-radius: var(--border-radius);
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-color);
+}
+
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding: 16px;
-  margin-bottom: 16px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease;
+  /* Increased padding for touch targets */
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-color);
 }
 
-.card:hover {
-  transform: translateY(-2px);
+.setting-item:last-child {
+  border-bottom: none;
 }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
+.setting-item>label:not(.switch) {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-color);
+  cursor: pointer;
+  flex: 1;
+  /* Label takes available space */
 }
 
-h2 {
-  font-size: 16px;
-  margin: 0;
-  font-weight: 600;
-}
-
-.description {
-  font-size: 12px;
-  color: var(--text-sub);
-  margin: 0 0 12px 0;
-  line-height: 1.4;
-}
-
-/* Sub Options */
-.sub-options {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  display: none; /* Hidden by default, toggled by JS */
-}
-
-.sub-options.visible {
-  display: block;
-  animation: fadeIn 0.3s ease;
-}
-
-.option-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-  font-size: 13px;
-}
-
-/* Toggle Switch */
+/* Switch Styles */
 .switch {
   position: relative;
   display: inline-block;
-  width: 40px;
-  height: 24px;
+  width: 50px;
+  height: 30px;
+  flex-shrink: 0;
+  flex-grow: 0;
 }
 
 .switch input {
@@ -125,62 +95,35 @@ h2 {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #3e4c5a;
-  transition: .4s;
+  background-color: #536471;
+  transition: .3s;
+  border-radius: 34px;
 }
 
 .slider:before {
   position: absolute;
   content: "";
-  height: 18px;
-  width: 18px;
-  left: 3px;
-  bottom: 3px;
+  height: 26px;
+  width: 26px;
+  left: 2px;
+  bottom: 2px;
   background-color: white;
-  transition: .4s;
-}
-
-input:checked + .slider {
-  background-color: var(--primary-color);
-}
-
-input:focus + .slider {
-  box-shadow: 0 0 1px var(--primary-color);
-}
-
-input:checked + .slider:before {
-  transform: translateX(16px);
-}
-
-.slider.round {
-  border-radius: 34px;
-}
-
-.slider.round:before {
+  transition: .3s;
   border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* Checkbox specific for sub-options (simpler) */
-input[type="checkbox"]:not(.switch input) {
-  accent-color: var(--primary-color);
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
+input:checked+.slider {
+  background-color: var(--accent-color);
 }
 
-/* Footer */
+input:checked+.slider:before {
+  transform: translateX(20px);
+}
+
 footer {
+  padding: 16px;
   text-align: center;
-  margin-top: 24px;
-}
-
-footer p {
-  font-size: 10px;
-  color: #3e4c5a;
-  margin: 0;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-5px); }
-  to { opacity: 1; transform: translateY(0); }
+  color: var(--secondary-text);
+  font-size: 11px;
 }

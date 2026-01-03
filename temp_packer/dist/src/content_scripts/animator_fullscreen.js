@@ -23,19 +23,33 @@ function createFullscreenButton() {
 
 function toggleFullscreen() {
     if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-        // Enter fullscreen
-        const elem = document.documentElement;
-        if (elem.requestFullscreen) {
-            elem.requestFullscreen();
-        } else if (elem.webkitRequestFullscreen) {
-            elem.webkitRequestFullscreen();
-        }
+        enterFullscreen();
     } else {
-        // Exit fullscreen
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-        } else if (document.webkitExitFullscreen) {
-            document.webkitExitFullscreen();
-        }
+        exitFullscreen();
+    }
+}
+
+function enterFullscreen() {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+        elem.requestFullscreen().catch(e => console.log('Fullscreen blocked:', e));
+    } else if (elem.webkitRequestFullscreen) {
+        elem.webkitRequestFullscreen();
+    }
+}
+
+function exitFullscreen() {
+    if (document.exitFullscreen) {
+        document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+    }
+}
+
+function removeFullscreenButton() {
+    const btn = document.getElementById('x-fullscreen-btn');
+    if (btn) {
+        btn.removeEventListener('click', toggleFullscreen);
+        btn.remove();
     }
 }

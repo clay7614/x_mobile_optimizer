@@ -4,7 +4,7 @@
  */
 
 // Custom Lightbox Logic
-let activeLightbox = null;
+var activeLightbox = null;
 let lightboxTrack = null;
 let imageList = [];
 let currentImageIndex = 0;
@@ -12,7 +12,7 @@ let currentImageIndex = 0;
 // Gesture state
 let gestureStartX = 0;
 let gestureStartY = 0;
-let trackStartX = 0;
+// trackStartX removed - unused
 let gestureStartTime = 0;
 let isDraggingX = false;
 let isDraggingY = false;
@@ -36,15 +36,49 @@ let controlsVisible = true;
 const CONTROLS_HIDE_DELAY = 3000; // 3 seconds
 
 function collectImages(startImg) {
-    const allImages = Array.from(document.querySelectorAll('img[src*="pbs.twimg.com/media"]'));
+    // 1. Determine Scope
+    let scopeElement = document;
+
+    // Priority 1: Modal (if tweet is open in modal) - treat as conversation
+    const modal = startImg.closest('[aria-modal="true"]');
+    if (modal) {
+        scopeElement = modal;
+    }
+    // Priority 2: Status Page (Conversation view) - treat as conversation
+    else if (window.location.pathname.includes('/status/')) {
+        // ideally find the conversation timeline or primary column
+        scopeElement = document.querySelector('[aria-label^="Timeline: Conversation"], [aria-label^="タイムライン: 会話"]')
+            || document.querySelector('[data-testid="primaryColumn"]');
+    }
+    // Priority 3: Timeline / List - treat as single tweet
+    else {
+        // In timeline, we only want images from the specific tweet clicked
+        scopeElement = startImg.closest('article[data-testid="tweet"]');
+    }
+
+    if (!scopeElement) scopeElement = document.body;
+
+    // 2. Query only Tweet Media images within scope
+    // We strictly look for images INSIDE tweet articles to avoid avatars/promos outside tweets
+    const potentialImages = Array.from(scopeElement.querySelectorAll('article[data-testid="tweet"] img[src*="pbs.twimg.com/media"]'));
+
+    // 3. Filter and Deduplicate
     const seen = new Set();
     imageList = [];
-    allImages.forEach(img => {
+
+    potentialImages.forEach(img => {
         if (!seen.has(img.src)) {
             seen.add(img.src);
             const highRes = img.src.replace(/name=\w+/, 'name=large');
-            // Find parent tweet
+            // Find parent tweet (guaranteed by query, but good for ref)
             const tweet = img.closest('[data-testid="tweet"]');
+
+            // Optional: Filter out if it seems to be in a "Who to follow" block inside the timeline?
+            // Usually those are distinct or don't use data-testid="tweet". 
+            // Promoted tweets DO use data-testid="tweet", but they are in the stream.
+            // "More to find" usually are just more tweets appended.
+            // If the user wants to restrict to "Tree" in Status view, the streamContainer logic above should handle it
+            // if the suggestions are outside that labeled region.
 
             imageList.push({
                 src: img.src,
@@ -57,6 +91,8 @@ function collectImages(startImg) {
 
     currentImageIndex = imageList.findIndex(item => item.src === startImg.src);
     if (currentImageIndex === -1) {
+        // Fallback: If strict query failed (e.g. startImg wasn't in scope or selector mismatch)
+        // We revert to just the single image to ensure it opens.
         const fallbackTweet = startImg.closest('[data-testid="tweet"]');
         imageList = [{
             src: startImg.src,
@@ -124,6 +160,21 @@ function openLightbox(sourceImg) {
     actionBar.className = 'x-lightbox-actions';
     lightbox.appendChild(actionBar);
 
+    // Create Navigation Buttons
+    if (imageList.length > 1) {
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'x-lightbox-nav x-lightbox-nav-prev';
+        prevBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>';
+        prevBtn.onclick = (e) => { e.stopPropagation(); navigateNext(); }; // Left button = next (RTL)
+        lightbox.appendChild(prevBtn);
+
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'x-lightbox-nav x-lightbox-nav-next';
+        nextBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>';
+        nextBtn.onclick = (e) => { e.stopPropagation(); navigatePrev(); }; // Right button = prev (RTL)
+        lightbox.appendChild(nextBtn);
+    }
+
     document.body.appendChild(lightbox);
 
     activeLightbox = lightbox;
@@ -149,13 +200,15 @@ function openLightbox(sourceImg) {
     lightbox.addEventListener('touchmove', onTouchMove, { passive: false });
     lightbox.addEventListener('touchend', onTouchEnd, { passive: false });
 
-    // Start auto-hide timer
+    // Start auto-hide timer and ensure controls are visible initially
+    controlsVisible = true;
     startControlsHideTimer();
 }
 
 function updateTrackPosition() {
     if (!lightboxTrack) return;
-    const translateX = -(currentImageIndex * 100);
+    // Positive direction because track is row-reversed
+    const translateX = currentImageIndex * 100;
     lightboxTrack.style.transform = `translateX(${translateX}vw)`;
     loadNearbyImages();
     updateInteractionBar();
@@ -182,7 +235,7 @@ function onTouchStart(e) {
         gestureStartY = e.touches[0].clientY;
         gestureStartTime = Date.now();
 
-        trackStartX = -(currentImageIndex * window.innerWidth);
+        // trackStartX calculation removed - unused
         isDraggingX = false;
         isDraggingY = false;
         isPinching = false;
@@ -300,12 +353,15 @@ function onTouchMove(e) {
         activeLightbox.style.backgroundColor = `rgba(0, 0, 0, ${opacity})`;
     }
     else if (isDraggingX) {
-        const currentTrackX = -(currentImageIndex * window.innerWidth);
+        // Positive direction because track is row-reversed
+        const currentTrackX = currentImageIndex * window.innerWidth;
+        // Track follows finger direction
         let newX = currentTrackX + deltaX;
 
-        // Resistance
-        if ((currentImageIndex === 0 && deltaX > 0) ||
-            (currentImageIndex === imageList.length - 1 && deltaX < 0)) {
+        // Resistance at edges
+        const maxIndex = isSpreadMode ? Math.ceil(imageList.length / 2) - 1 : imageList.length - 1;
+        if ((currentImageIndex === 0 && deltaX < 0) ||
+            (currentImageIndex === maxIndex && deltaX > 0)) {
             newX = currentTrackX + (deltaX * 0.4);
         }
 
@@ -379,10 +435,12 @@ function onTouchEnd(e) {
     }
     else if (isDraggingX) {
         const threshold = 50;
-        const isNext = (deltaX < -threshold) || (velocityX > 0.5 && deltaX < -50);
-        const isPrev = (deltaX > threshold) || (velocityX > 0.5 && deltaX > 50);
+        // Right swipe (positive deltaX) = next, Left swipe (negative deltaX) = prev
+        const isNext = (deltaX > threshold) || (velocityX > 0.5 && deltaX > 50);
+        const isPrev = (deltaX < -threshold) || (velocityX > 0.5 && deltaX < -50);
 
-        if (isNext && currentImageIndex < imageList.length - 1) {
+        const maxIndex = isSpreadMode ? Math.ceil(imageList.length / 2) - 1 : imageList.length - 1;
+        if (isNext && currentImageIndex < maxIndex) {
             currentImageIndex++;
         } else if (isPrev && currentImageIndex > 0) {
             currentImageIndex--;
@@ -399,14 +457,15 @@ function onTouchEnd(e) {
         const deltaX = e.changedTouches[0].clientX - gestureStartX;
         const deltaY = e.changedTouches[0].clientY - gestureStartY;
         if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) {
-            // Check if tap was on action bar or controls
+            // Check if tap was on action bar or controls or nav buttons
             const target = e.target;
             const actionBar = activeLightbox?.querySelector('.x-lightbox-actions');
             const controls = activeLightbox?.querySelector('.x-lightbox-controls');
             const isOnActionBar = actionBar && actionBar.contains(target);
             const isOnControls = controls && controls.contains(target);
+            const isOnNav = target.closest('.x-lightbox-nav') !== null;
 
-            if (!isOnActionBar && !isOnControls) {
+            if (!isOnActionBar && !isOnControls && !isOnNav) {
                 toggleControlsVisibility();
             }
         }
@@ -468,8 +527,9 @@ function closeLightbox(fromHistory = false) {
 
     // Manage History behind the scenes if this wasn't called by history nav
     if (!fromHistory) {
-        // We set a flag on window/programmatically to skip our own popstate check if needed
-        // but here we just call back()
+        if (window.xAnimator) {
+            window.xAnimator.isProgrammaticBack = true;
+        }
         history.back();
     }
 
@@ -742,6 +802,23 @@ function animateButton(index) {
     }
 }
 
+function navigatePrev() {
+    if (currentImageIndex > 0) {
+        currentImageIndex--;
+        updateTrackPosition();
+    }
+    showControls(); // Reset timer on navigation
+}
+
+function navigateNext() {
+    const maxIndex = isSpreadMode ? Math.ceil(imageList.length / 2) - 1 : imageList.length - 1;
+    if (currentImageIndex < maxIndex) {
+        currentImageIndex++;
+        updateTrackPosition();
+    }
+    showControls(); // Reset timer on navigation
+}
+
 // --- Controls Visibility ---
 
 function startControlsHideTimer() {
@@ -755,8 +832,10 @@ function showControls() {
     if (!activeLightbox) return;
     const actionBar = activeLightbox.querySelector('.x-lightbox-actions');
     const controls = activeLightbox.querySelector('.x-lightbox-controls');
+    const navBtns = activeLightbox.querySelectorAll('.x-lightbox-nav');
     if (actionBar) actionBar.classList.remove('hidden');
     if (controls) controls.classList.remove('hidden');
+    navBtns.forEach(btn => btn.classList.remove('hidden'));
     controlsVisible = true;
     startControlsHideTimer();
 }
@@ -765,8 +844,10 @@ function hideControls() {
     if (!activeLightbox) return;
     const actionBar = activeLightbox.querySelector('.x-lightbox-actions');
     const controls = activeLightbox.querySelector('.x-lightbox-controls');
+    const navBtns = activeLightbox.querySelectorAll('.x-lightbox-nav');
     if (actionBar) actionBar.classList.add('hidden');
     if (controls) controls.classList.add('hidden');
+    navBtns.forEach(btn => btn.classList.add('hidden'));
     controlsVisible = false;
 }
 
