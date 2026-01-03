@@ -18,13 +18,52 @@ function initAnimator() {
             injectAnimationStyles();
             attachInteractionListeners();
             startAnimationObserver();
+            startNavigationObserver();
+            createFullscreenButton();
 
-            // Show timeline overlay immediately on /home if loading
+            // Show home loading pattern immediately if on /home
             if (window.location.pathname.endsWith('/home')) {
-                showTimelineOverlay();
+                setHomeLoading(true);
             }
         }
     });
+}
+
+// Fullscreen Toggle
+function createFullscreenButton() {
+    if (document.getElementById('x-fullscreen-btn')) return;
+
+    const btn = document.createElement('button');
+    btn.id = 'x-fullscreen-btn';
+    btn.className = 'x-fullscreen-btn';
+    btn.innerHTML = `
+        <svg viewBox="0 0 24 24">
+            <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+        </svg>
+    `;
+    btn.title = 'フルスクリーン';
+
+    btn.addEventListener('click', toggleFullscreen);
+    document.body.appendChild(btn);
+}
+
+function toggleFullscreen() {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        // Enter fullscreen
+        const elem = document.documentElement;
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) {
+            elem.webkitRequestFullscreen();
+        }
+    } else {
+        // Exit fullscreen
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        }
+    }
 }
 
 function injectAnimationStyles() {
@@ -96,28 +135,161 @@ function injectAnimationStyles() {
         100% { background-position: 200% 0; }
     }
 
-    /* Timeline Overlay Skeleton (for /home only) */
-    .x-timeline-skeleton-overlay {
-        position: absolute;
-        top: 180px; /* Skip header and compose area */
-        left: 0;
-        width: 100%;
-        min-height: calc(100% - 180px);
-        background: rgb(0, 0, 0);
-        z-index: 2000;
-        overflow-y: hidden;
-        box-sizing: border-box;
-        transition: opacity 0.3s ease-out;
-    }
-    .x-timeline-skeleton-overlay.x-hiding {
-        opacity: 0;
-        pointer-events: none;
-    }
-    /* Ensure primaryColumn can contain the overlay */
-    [data-testid="primaryColumn"] {
+    /* Home Timeline CSS Pattern Skeleton (Refined for Consistency) */
+    .x-loading-home [data-testid="primaryColumn"] {
         position: relative !important;
     }
+    .x-loading-home [data-testid="primaryColumn"]::before {
+        content: "";
+        position: absolute;
+        top: 230px;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        background-color: #000;
+        z-index: 1000;
+        pointer-events: none;
+    }
+    .x-loading-home [data-testid="primaryColumn"]::after {
+        content: "";
+        position: absolute;
+        top: 240px;
+        left: 13px;
+        right: 13px;
+        height: 100vh;
+        z-index: 1001;
+        background-image: 
+            linear-gradient(
+                90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.03) 25%, 
+                rgba(255, 255, 255, 0.08) 50%, 
+                rgba(255, 255, 255, 0.03) 75%, 
+                transparent
+            ),
+            repeating-linear-gradient(
+                to bottom,
+                rgba(255, 255, 255, 0.05) 0px,
+                rgba(255, 255, 255, 0.05) 200px,
+                transparent 200px,
+                transparent 202px /* 2px gap matching legacy margin-bottom */
+            );
+        background-size: 200% 100%, 100% 202px;
+        animation: x-home-shimmer 1.5s infinite linear; /* 1.5s matching x-shimmer */
+        mask-image: linear-gradient(to bottom, black 0%, black 80%, transparent 100%);
+    }
 
+    @keyframes x-home-shimmer {
+        0% { background-position: -200% 0, 0 0; }
+        100% { background-position: 200% 0, 0 0; }
+    }
+
+    /* CSS-Only Skeleton Cell for /home Infinite Scroll */
+    .x-skeleton-cell {
+        position: relative;
+        min-height: 200px;
+        background: rgba(255, 255, 255, 0.05) !important;
+        overflow: hidden;
+    }
+    .x-skeleton-cell::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+        background-size: 200% 100%;
+        animation: x-shimmer 1.5s infinite;
+    }
+    .x-skeleton-cell [role="progressbar"] {
+        opacity: 0 !important;
+    }
+
+    /* Hide individual skeletons and spinners when home loading is active */
+    .x-loading-home [role="progressbar"],
+    .x-loading-home .x-skeleton-container {
+        display: none !important;
+    }
+
+    /* Hide spinner on /home timeline - will be replaced by skeleton background */
+    body.x-home-page [data-testid="cellInnerDiv"] [role="progressbar"] {
+        opacity: 0 !important;
+    }
+
+    /* CSS Skeleton background for loading cells (all pages) */
+    [data-testid="cellInnerDiv"].x-skeleton-cell {
+        position: relative;
+        min-height: 6000px;
+        overflow: hidden;
+        background: #000 !important;
+    }
+    [data-testid="cellInnerDiv"].x-skeleton-cell [role="progressbar"] {
+        opacity: 0 !important;
+    }
+    [data-testid="cellInnerDiv"].x-skeleton-cell::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: 
+            linear-gradient(
+                90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.03) 25%, 
+                rgba(255, 255, 255, 0.08) 50%, 
+                rgba(255, 255, 255, 0.03) 75%, 
+                transparent
+            ),
+            repeating-linear-gradient(
+                to bottom,
+                rgba(255, 255, 255, 0.05) 0px,
+                rgba(255, 255, 255, 0.05) 200px,
+                transparent 200px,
+                transparent 202px
+            );
+        background-size: 200% 100%, 100% 202px;
+        animation: x-shimmer 1.5s infinite;
+    }
+
+    /* Fullscreen Toggle Button */
+    .x-fullscreen-btn {
+        position: fixed;
+        bottom: 80px;
+        right: 15px;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: rgba(29, 155, 240, 0.9);
+        border: none;
+        color: white;
+        font-size: 20px;
+        cursor: pointer;
+        z-index: 99998;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        transition: transform 0.2s ease, opacity 0.2s ease;
+        opacity: 0.7;
+    }
+    .x-fullscreen-btn:hover,
+    .x-fullscreen-btn:active {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+    .x-fullscreen-btn svg {
+        width: 24px;
+        height: 24px;
+        fill: white;
+    }
+    /* Hide button in fullscreen mode */
+    :fullscreen .x-fullscreen-btn,
+    :-webkit-full-screen .x-fullscreen-btn {
+        display: none;
+    }
 
 
     /* Modal & Image Zoom Animations */
@@ -201,66 +373,55 @@ function triggerBackNav() {
     }, 1000);
 }
 
-// Timeline Overlay Skeleton System (for /home only)
-let timelineOverlayActive = false;
-let hasTimelineContent = false; // Prevent race conditions
+// Timeline Loading State Manager
+let homeLoadingActive = false;
 
-function showTimelineOverlay() {
-    if (timelineOverlayActive) return;
-    if (hasTimelineContent) return; // Don't show if content already appeared
-    if (!window.location.pathname.endsWith('/home')) return;
+function setHomeLoading(active) {
+    const isHome = window.location.pathname.endsWith('/home');
 
-    // Check if already has content
-    const existingTweets = document.querySelectorAll('[data-testid="tweet"]');
-    if (existingTweets.length > 2) {
-        hasTimelineContent = true;
-        return;
+    if (active && isHome) {
+        if (homeLoadingActive) return;
+        // Check if content already exists
+        if (document.querySelectorAll('[data-testid="tweet"]').length > 0) return;
+
+        document.body.classList.add('x-loading-home');
+        homeLoadingActive = true;
+    } else {
+        if (!homeLoadingActive) return;
+        document.body.classList.remove('x-loading-home');
+        homeLoadingActive = false;
     }
-
-    // Wait for primaryColumn to exist - do not use body fallback
-    const primaryColumn = document.querySelector('[data-testid="primaryColumn"]');
-    if (!primaryColumn) {
-        // Retry after a short delay
-        setTimeout(() => showTimelineOverlay(), 100);
-        return;
-    }
-
-    // RE-CHECK: Tweets may have loaded while waiting for primaryColumn
-    const tweetsNow = document.querySelectorAll('[data-testid="tweet"]');
-    if (tweetsNow.length > 0) {
-        hasTimelineContent = true;
-        return; // Tweets loaded during wait, don't show overlay
-    }
-
-    const overlay = document.createElement('div');
-    overlay.className = 'x-timeline-skeleton-overlay';
-    overlay.id = 'x-timeline-skeleton-overlay';
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'x-skeleton-wrapper';
-
-    for (let i = 0; i < 10; i++) {
-        const card = document.createElement('div');
-        card.className = 'x-skeleton-card';
-        const height = Math.floor(Math.random() * (400 - 150 + 1)) + 150;
-        card.style.height = `${height}px`;
-        wrapper.appendChild(card);
-    }
-
-    overlay.appendChild(wrapper);
-    primaryColumn.appendChild(overlay);
-    timelineOverlayActive = true;
 }
 
-function hideTimelineOverlay() {
-    const overlay = document.getElementById('x-timeline-skeleton-overlay');
-    if (overlay) {
-        overlay.classList.add('x-hiding');
-        setTimeout(() => {
-            overlay.remove();
-        }, 300);
+// SPA Navigation Observer
+let lastPath = window.location.pathname;
+function startNavigationObserver() {
+    // Set initial home page class
+    if (window.location.pathname.endsWith('/home')) {
+        document.body.classList.add('x-home-page');
     }
-    timelineOverlayActive = false;
+
+    setInterval(() => {
+        if (window.location.pathname !== lastPath) {
+            lastPath = window.location.pathname;
+            if (lastPath.endsWith('/home')) {
+                document.body.classList.add('x-home-page');
+                setHomeLoading(true);
+            } else {
+                document.body.classList.remove('x-home-page');
+                setHomeLoading(false);
+            }
+        }
+    }, 100);
+
+    window.addEventListener('popstate', () => {
+        lastPath = window.location.pathname;
+        if (lastPath.endsWith('/home')) {
+            setHomeLoading(true);
+        } else {
+            setHomeLoading(false);
+        }
+    });
 }
 
 // Custom Lightbox Logic
@@ -741,24 +902,36 @@ const animObserver = new MutationObserver((mutations) => {
                 else if (testId === 'primaryColumn' || (role === 'main' && node.querySelector('[data-testid="primaryColumn"]'))) {
                     const target = testId === 'primaryColumn' ? node : node.querySelector('[data-testid="primaryColumn"]');
                     if (target) {
-                        // Show timeline overlay on /home
+                        // Activate home loading pattern
                         if (window.location.pathname.endsWith('/home')) {
-                            showTimelineOverlay();
+                            setHomeLoading(true);
                         }
                     }
                 }
                 else if (testId === 'cellInnerDiv') {
                     const progressBar = node.querySelector('[role="progressbar"]');
-                    if (progressBar) {
-                        enableSkeleton(node);
-                    } else {
-                        disableSkeleton(node);
-                        const content = node.firstElementChild;
-                        if (content) content.classList.add('x-fade-in');
+                    const hasTweet = node.querySelector('[data-testid="tweet"]');
 
-                        // Hide timeline overlay if content is present on /home
-                        if (window.location.pathname.endsWith('/home') && timelineOverlayActive) {
-                            hideTimelineOverlay();
+                    if (progressBar && !hasTweet) {
+                        // Use CSS skeleton class for all pages
+                        if (window.location.pathname.endsWith('/home')) {
+                            if (!homeLoadingActive) {
+                                node.classList.add('x-skeleton-cell');
+                            }
+                        } else {
+                            node.classList.add('x-skeleton-cell');
+                        }
+                    } else {
+                        // Remove skeleton class when content arrives
+                        node.classList.remove('x-skeleton-cell');
+                        const content = node.firstElementChild;
+                        if (content && !content.classList.contains('x-fade-in')) {
+                            content.classList.add('x-fade-in');
+                        }
+
+                        // Hide home loading pattern if content is present
+                        if (window.location.pathname.endsWith('/home') && homeLoadingActive) {
+                            setHomeLoading(false);
                         }
                     }
                 }
@@ -766,27 +939,33 @@ const animObserver = new MutationObserver((mutations) => {
                 else if (role === 'progressbar' || (node.querySelector && node.querySelector('[role="progressbar"]'))) {
                     const progressBar = role === 'progressbar' ? node : node.querySelector('[role="progressbar"]');
 
-                    // Priority 1: Tweel Cell
+                    // Priority 1: Tweet Cell
                     const cell = progressBar.closest('[data-testid="cellInnerDiv"]');
                     if (cell) {
-                        enableSkeleton(cell);
+                        const hasTweet = cell.querySelector('[data-testid="tweet"]');
+                        if (!hasTweet) {
+                            // Use CSS skeleton class for all pages
+                            if (window.location.pathname.endsWith('/home')) {
+                                if (!homeLoadingActive) {
+                                    cell.classList.add('x-skeleton-cell');
+                                }
+                            } else {
+                                cell.classList.add('x-skeleton-cell');
+                            }
+                        }
                     }
-                    // Priority 2: Generic Page Loader (e.g. Profile, Notifications initial load)
+                    // Priority 2: Generic Page Loader
                     else {
                         const primaryCol = progressBar.closest('[data-testid="primaryColumn"]');
                         if (primaryCol) {
-                            // NEW: On /home, we use the overlay for INITIAL load, so HIDE the original main spinner
-                            if (window.location.pathname.endsWith('/home') && timelineOverlayActive) {
-                                progressBar.style.opacity = '0';
+                            // On /home, we use the CSS pattern for INITIAL load
+                            if (window.location.pathname.endsWith('/home') && homeLoadingActive) {
                                 return;
                             }
 
-                            // Find a suitable container locally
                             const container = progressBar.parentElement;
                             if (container && container.tagName === 'DIV' && !container.classList.contains('x-skeleton-container')) {
-                                // ensure it's not a small button loader
                                 const rect = progressBar.getBoundingClientRect();
-                                // If spinner is reasonably large or in a large container
                                 if (rect.width > 20 || container.offsetHeight > 100) {
                                     enableSkeleton(container);
                                 }
@@ -794,19 +973,24 @@ const animObserver = new MutationObserver((mutations) => {
                         }
                     }
                 }
-                else if (testId === 'tweet' || (node.querySelector && node.querySelector('[data-testid="tweet"]'))) {
-                    const tweetNode = testId === 'tweet' ? node : node.querySelector('[data-testid="tweet"]');
-                    if (tweetNode) {
-                        hasTimelineContent = true; // Mark content as loaded
-                        tweetNode.classList.add('x-fade-in');
-                        // Clean up parent skeleton if it exists
-                        const parentCell = tweetNode.closest('div[data-testid="cellInnerDiv"]');
+                else if (testId === 'tweet' || (node.querySelector && node.querySelector('[data-testid="tweet"]')) ||
+                    (testId === 'cellInnerDiv' && !node.querySelector('[role="progressbar"]'))) {
+                    const isTweet = testId === 'tweet' || node.querySelector('[data-testid="tweet"]');
+                    const isContentCell = testId === 'cellInnerDiv' && !node.querySelector('[role="progressbar"]');
+
+                    if (isTweet || isContentCell) {
+                        if (isTweet) {
+                            const tweetNode = testId === 'tweet' ? node : node.querySelector('[data-testid="tweet"]');
+                            tweetNode.classList.add('x-fade-in');
+                        }
+
+                        const parentCell = node.closest ? node.closest('div[data-testid="cellInnerDiv"]') : null;
                         if (parentCell) {
                             disableSkeleton(parentCell);
                         }
-                        // Hide timeline overlay if on /home
-                        if (window.location.pathname.endsWith('/home') && timelineOverlayActive) {
-                            hideTimelineOverlay();
+                        // Hide home loading pattern
+                        if (window.location.pathname.endsWith('/home') && homeLoadingActive) {
+                            setHomeLoading(false);
                         }
                     }
                 }
@@ -821,8 +1005,8 @@ function enableSkeleton(cell) {
     // Strict safety check: Disable on status pages to prevent React conflicts
     if (window.location.pathname.includes('/status/')) return;
 
-    // For /home, we use overlay for initial load, but DOM skeletons for infinite scroll
-    if (window.location.pathname.endsWith('/home') && timelineOverlayActive) return;
+    // For /home, ALWAYS use CSS class approach, never DOM injection
+    if (window.location.pathname.endsWith('/home')) return;
 
     if (cell.querySelector('[data-testid="tweet"]')) return;
 
