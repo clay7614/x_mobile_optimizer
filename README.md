@@ -27,6 +27,7 @@ Android上のWeb版X (旧Twitter) を、アプリに近い操作感で利用す�
 ## インストール方法
 1.  **アプリインストール**
     *   Google Playストア等から「Microsoft Edge Canary」をインストールします。
+     *   [Releases](https://github.com/clay7614/x_mobile_optimizer/releases/latest)から`x_mobile_optimizer.crx`をダウンロードします。
 
 2.  **開発者オプションの有効化**
     *   Edge Canaryの設定を開き、「Microsoft Edgeについて」へ進みます。
@@ -34,9 +35,9 @@ Android上のWeb版X (旧Twitter) を、アプリに近い操作感で利用す�
     *   「開発者向けオプションが有効になりました」等の表示が出ればOKです。
 
 3.  **拡張機能のインストール**
-    *   設定メニューに戻り、新たに追加された「開発者向けオプション」を開きます。
+    *   Edge Canaryの設定に戻り、一番下までスクロールを行い、新たに追加された「開発者向けオプション」を開きます。
     *   「Extension install by crx」をタップします。
-    *   「Choose .crx file」をタップし、あらかじめ端末に保存しておいた本拡張機能のファイル（`x_mobile_optimizer.crx`）を選択して「OK」を押します。
+    *   「Choose .crx file」をタップし、ダウンロードした`x_mobile_optimizer.crx`を選択して「OK」を押します。
     *   「X Mobile Optimizerを追加しますか？」という確認ウィンドウが表示されるので、「追加」を押してください。
 
 ## 注意事項
