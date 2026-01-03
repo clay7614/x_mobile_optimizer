@@ -1,6 +1,6 @@
 # X Mobile Optimizer (for Microsoft Edge Canary)
 
-Microsoft Edge Canary (Android) 上の X (旧Twitter) を、ネイティブアプリに近い操作感で利用するための拡張機能です。
+Android上のWeb版X (旧Twitter) を、アプリに近い操作感で利用するための拡張機能です。
 
 ## 主な機能
 
@@ -19,17 +19,13 @@ Microsoft Edge Canary (Android) 上の X (旧Twitter) を、ネイティブア�
 *   動画のプリロードを最小限に抑え、帯域幅とメモリ使用量を削減。
 *   X のメディアサーバーへの事前接続により、リソース取得を高速化。
 
----
 
 ## 推奨環境
 
-*   **Microsoft Edge Canary** (Android版)
-    *   本拡張機能は、このブラウザでの動作を前提に設計されています。
+* **Microsoft Edge Canary** (Android版)  
+本拡張機能は、このブラウザでの動作を前提に設計されています。
 
 ## インストール方法
-
-Microsoft Edge Canaryへのインストール手順は以下の通りです。
-
 1.  **アプリインストール**
     *   Google Playストア等から「Microsoft Edge Canary」をインストールします。
 
@@ -43,3 +39,7 @@ Microsoft Edge Canaryへのインストール手順は以下の通りです。
     *   「Extension install by crx」をタップします。
     *   「Choose .crx file」をタップし、あらかじめ端末に保存しておいた本拡張機能のファイル（`x_mobile_optimizer.crx`）を選択して「OK」を押します。
     *   「X Mobile Optimizerを追加しますか？」という確認ウィンドウが表示されるので、「追加」を押してください。
+
+## 注意事項
+
+本拡張機能は開発初期段階のため、予期しない動作や不具合が発生する可能性があります。
