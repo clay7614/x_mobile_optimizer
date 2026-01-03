@@ -105,9 +105,6 @@ function optimizeRendering() {
 
     // 3. 動画最適化 (次フレームで実行)
     setTimeout(optimizeVideos, 0);
-
-    // 4. アニメーション要素のGPUレイヤー最適化 (低優先度)
-    setTimeout(optimizeAnimationElements, 16);
 }
 
 function optimizeCells() {
@@ -143,33 +140,6 @@ function optimizeVideos() {
             video.preload = 'none';
         }
         video.dataset.xmoVid = 'true';
-    });
-}
-
-function optimizeAnimationElements() {
-    // よくアニメーションする要素にGPUレイヤーを事前作成
-    // これによりアニメーション開始時のレイヤー作成コストを削減
-
-    // ツイートのアクションボタン (いいね、RT、リプライなど)
-    const actionButtons = document.querySelectorAll(
-        '[data-testid="like"]:not([data-xmo-anim="true"]),' +
-        '[data-testid="unlike"]:not([data-xmo-anim="true"]),' +
-        '[data-testid="retweet"]:not([data-xmo-anim="true"]),' +
-        '[data-testid="unretweet"]:not([data-xmo-anim="true"]),' +
-        '[data-testid="reply"]:not([data-xmo-anim="true"]),' +
-        '[data-testid="bookmark"]:not([data-xmo-anim="true"])'
-    );
-
-    actionButtons.forEach(btn => {
-        btn.style.willChange = 'transform';
-        btn.dataset.xmoAnim = 'true';
-    });
-
-    // モーダルやダイアログ (出現時にアニメーション)
-    const modals = document.querySelectorAll('[role="dialog"]:not([data-xmo-anim="true"])');
-    modals.forEach(modal => {
-        modal.style.willChange = 'transform, opacity';
-        modal.dataset.xmoAnim = 'true';
     });
 }
 

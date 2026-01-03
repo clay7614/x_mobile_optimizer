@@ -105,9 +105,6 @@ function optimizeRendering() {
 
     // 3. 動画最適化 (次フレームで実行)
     setTimeout(optimizeVideos, 0);
-
-    // 4. アニメーション要素のGPUレイヤー最適化 (低優先度)
-    setTimeout(optimizeAnimationElements, 16);
 }
 
 function optimizeCells() {

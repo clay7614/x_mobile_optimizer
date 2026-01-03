@@ -1,6 +1,6 @@
 # X Mobile Optimizer (for Microsoft Edge Canary)
 
-Microsoft Edge Canary (Android) 上の X (旧Twitter) を、ネイティブアプリのような操作感で快適に利用するための拡張機能です。
+Microsoft Edge Canary (Android) 上の X (旧Twitter) を、ネイティブアプリに近い操作感で利用するための拡張機能です。
 
 ## 主な機能
 
@@ -14,6 +14,10 @@ Microsoft Edge Canary (Android) 上の X (旧Twitter) を、ネイティブア�
 *   マンガなどを読むのに最適な、2枚の画像を見開きで表示するモードを搭載しています。
 
 ### 読み込み最適化
+*   画面外のツイートのレンダリングをスキップし、スクロール性能を向上。
+*   画像のデコードをメインスレッド外で実行し、スクロール中のカクつきを軽減。
+*   動画のプリロードを最小限に抑え、帯域幅とメモリ使用量を削減。
+*   X のメディアサーバーへの事前接続により、リソース取得を高速化。
 
 ---
 
